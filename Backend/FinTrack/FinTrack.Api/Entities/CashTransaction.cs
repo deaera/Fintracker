@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,10 @@ public class CashTransaction
 
     [Precision(18, 2)]
     public decimal Amount { get; set; }
+
+    /// <summary>The currency the amount is recorded in.</summary>
+    [MaxLength(8)]
+    public string Currency { get; set; } = "EUR";
 
     public string Description { get; set; } = string.Empty;
 

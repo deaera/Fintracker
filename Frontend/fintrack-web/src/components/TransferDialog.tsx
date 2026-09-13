@@ -11,6 +11,8 @@ import {
 } from "@mui/material";
 import type { Account, CreateTransferInput } from "../types";
 
+const CURRENCIES = ["RON", "EUR", "USD", "GBP"];
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -28,8 +30,20 @@ export default function TransferDialog({ open, onClose, accounts, onSubmit }: Pr
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(toDateInputValue(new Date().toISOString()));
   const [description, setDescription] = useState("");
+  const [currency, setCurrency] = useState(
+    accounts.find((a) => a.id === accounts[0]?.id)?.currency ?? "EUR",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const currencyOf = (id: string) => accounts.find((a) => a.id === id)?.currency ?? "EUR";
+
+  const handleFromChange = (id: string) => {
+    if (currency === currencyOf(fromAccountId)) {
+      setCurrency(currencyOf(id));
+    }
+    setFromAccountId(id);
+  };
 
   const handleSubmit = async () => {
     const amountValue = Number(amount);
@@ -61,6 +75,7 @@ export default function TransferDialog({ open, onClose, accounts, onSubmit }: Pr
         fromAccountId,
         toAccountId,
         amount: amountValue,
+        currency,
         date,
         description: description.trim(),
       });
@@ -80,7 +95,7 @@ export default function TransferDialog({ open, onClose, accounts, onSubmit }: Pr
           select
           label="From"
           value={fromAccountId}
-          onChange={(e) => setFromAccountId(e.target.value)}
+          onChange={(e) => handleFromChange(e.target.value)}
           fullWidth
           autoFocus
         >
@@ -113,6 +128,21 @@ export default function TransferDialog({ open, onClose, accounts, onSubmit }: Pr
           slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
           fullWidth
         />
+
+        <TextField
+          select
+          label="Currency"
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          fullWidth
+          helperText="Transferred amount is recorded in this currency."
+        >
+          {CURRENCIES.map((c) => (
+            <MenuItem key={c} value={c}>
+              {c}
+            </MenuItem>
+          ))}
+        </TextField>
 
         <TextField
           label="Date"

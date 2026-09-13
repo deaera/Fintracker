@@ -64,7 +64,7 @@ function StatCard({ title, value, icon, color, sub }: StatCardProps) {
 }
 
 export default function DashboardPage() {
-  const { currency, convert, convertTo } = useSettings();
+  const { currency, convert, convertFrom, convertTo } = useSettings();
   const [period, setPeriod] = useState<Period>({ month: null, year: null });
   const { data, loading, error } = useApiData(
     () => getDashboard(period),
@@ -233,7 +233,7 @@ export default function DashboardPage() {
                         : t.categoryType === CategoryType.Transfer
                           ? "⇄ "
                           : "−"}
-                      {formatCurrency(convert(t.amount), currency)}
+                      {formatCurrency(convert(convertFrom(t.amount, t.currency)), currency)}
                     </Typography>
                   }
                 >

@@ -3,7 +3,7 @@ using FinTrack.Api.Entities;
 
 namespace FinTrack.Api.DTOs.Accounts;
 
-public class CreateAccountRequest
+public class UpdateAccountRequest
 {
     [Required]
     [MaxLength(100)]
@@ -15,6 +15,6 @@ public class CreateAccountRequest
 
     public decimal InitialBalance { get; set; }
 
-    /// <summary>Date the manual balance is accurate as of. Defaults to today when not provided.</summary>
-    public DateOnly? BalanceDate { get; set; }
+    /// <summary>Date the manual balance is accurate as of. Transactions before it stay recorded but don't affect the balance.</summary>
+    public DateOnly BalanceDate { get; set; }
 }

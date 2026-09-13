@@ -13,6 +13,8 @@ import {
 import type { Account, CashTransaction, Category, CreateTransactionInput } from "../types";
 import { CategoryType } from "../types";
 
+const CURRENCIES = ["RON", "EUR", "USD", "GBP"];
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -45,11 +47,25 @@ export default function TransactionFormDialog({
     initial?.categoryId ?? firstExpenseCategory?.id ?? categories[0]?.id ?? "",
   );
   const [accountId, setAccountId] = useState(initial?.accountId ?? accounts[0]?.id ?? "");
+  const initialCurrency =
+    initial?.currency ??
+    accounts.find((a) => a.id === (initial?.accountId ?? accounts[0]?.id))?.currency ??
+    "EUR";
+  const [currency, setCurrency] = useState(initialCurrency);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const incomeCategories = categories.filter((c) => c.type === CategoryType.Income);
   const expenseCategories = categories.filter((c) => c.type === CategoryType.Expense);
+
+  const currencyOf = (id: string) => accounts.find((a) => a.id === id)?.currency ?? "EUR";
+
+  const handleAccountChange = (id: string) => {
+    if (currency === currencyOf(accountId)) {
+      setCurrency(currencyOf(id));
+    }
+    setAccountId(id);
+  };
 
   const handleSubmit = async () => {
     const amountValue = Number(amount);
@@ -72,6 +88,7 @@ export default function TransactionFormDialog({
       await onSubmit({
         description: description.trim(),
         amount: amountValue,
+        currency,
         date,
         categoryId,
         accountId,
@@ -139,12 +156,27 @@ export default function TransactionFormDialog({
           select
           label="Account"
           value={accountId}
-          onChange={(e) => setAccountId(e.target.value)}
+          onChange={(e) => handleAccountChange(e.target.value)}
           fullWidth
         >
           {accounts.map((a) => (
             <MenuItem key={a.id} value={a.id}>
               {a.name}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          label="Currency"
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          fullWidth
+          helperText="The amount is recorded in this currency."
+        >
+          {CURRENCIES.map((c) => (
+            <MenuItem key={c} value={c}>
+              {c}
             </MenuItem>
           ))}
         </TextField>

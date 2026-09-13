@@ -14,7 +14,13 @@ public class Account
 
     [Precision(18, 2)]
     public decimal InitialBalance { get; set; }
-    
+
+    /// <summary>
+    /// Manual balance is accurate as of this date. Only transactions strictly after this
+    /// date update the balance; earlier ones are recorded but don't change it.
+    /// </summary>
+    public DateOnly BalanceDate { get; set; }
+
     public string Currency { get; set; } = "EUR";
 
     public ICollection<CashTransaction> CashTransactions { get; set; }

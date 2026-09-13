@@ -28,4 +28,15 @@ public class AccountsController : ControllerBase
 
         return CreatedAtAction(nameof(Get), new { id = account.Id }, account);
     }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<AccountResponse>> Update(Guid id, UpdateAccountRequest request)
+    {
+        var account = await _service.UpdateAsync(id, request);
+
+        if (account is null)
+            return NotFound();
+
+        return Ok(account);
+    }
 }

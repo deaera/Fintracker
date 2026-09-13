@@ -29,9 +29,9 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
-import { getAccounts, createAccount } from "../services/accountService";
+import { getAccounts, createAccount, updateAccount } from "../services/accountService";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../services/categoryService";
-import type { Account, Category, CreateAccountInput, CreateCategoryInput } from "../types";
+import type { Account, Category, CreateCategoryInput, UpdateAccountInput } from "../types";
 import { AccountType, CategoryType } from "../types";
 import { formatCurrency } from "../utils/format";
 
@@ -145,14 +145,24 @@ function CategoryDialog({ open, onClose, initial, onSave }: CategoryDialogProps)
 interface AccountDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (input: CreateAccountInput) => Promise<void>;
+  initial: Account | null;
+  onSave: (input: UpdateAccountInput) => Promise<void>;
 }
 
-function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<AccountType>(AccountType.Checking);
-  const [currency, setCurrency] = useState("EUR");
-  const [initialBalance, setInitialBalance] = useState("0");
+function toDateInputValue(date: string): string {
+  return date.slice(0, 10);
+}
+
+function AccountDialog({ open, onClose, initial, onSave }: AccountDialogProps) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [type, setType] = useState<AccountType>(initial?.type ?? AccountType.Checking);
+  const [currency, setCurrency] = useState(initial?.currency ?? "EUR");
+  const [initialBalance, setInitialBalance] = useState(
+    initial ? String(initial.initialBalance) : "",
+  );
+  const [balanceDate, setBalanceDate] = useState(
+    toDateInputValue(initial?.balanceDate ?? new Date().toISOString().slice(0, 10)),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -168,6 +178,7 @@ function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
         type,
         currency,
         initialBalance: Number(initialBalance) || 0,
+        balanceDate,
       });
       onClose();
     } catch {
@@ -179,7 +190,7 @@ function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-      <DialogTitle>Add account</DialogTitle>
+      <DialogTitle>{initial ? "Edit account" : "Add account"}</DialogTitle>
       <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
         <TextField
           label="Name"
@@ -213,11 +224,20 @@ function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
           </Select>
         </FormControl>
         <TextField
-          label="Starting balance"
+          label="Balance"
           value={initialBalance}
           onChange={(e) => setInitialBalance(e.target.value)}
           type="number"
           fullWidth
+        />
+        <TextField
+          label="Balance as of"
+          value={balanceDate}
+          onChange={(e) => setBalanceDate(e.target.value)}
+          type="date"
+          fullWidth
+          helperText="Transactions after this date update the balance; earlier ones are recorded only."
+          slotProps={{ inputLabel: { shrink: true } }}
         />
         {error && (
           <Typography variant="body2" color="error">
@@ -242,6 +262,7 @@ export default function SettingsPage() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
   const categories = categoriesState.data ?? [];
   const accounts = accountsState.data ?? [];
@@ -272,10 +293,16 @@ export default function SettingsPage() {
     }
   };
 
-  const handleAccountSave = async (input: CreateAccountInput) => {
-    await createAccount(input);
-    toast.success("Account added");
+  const handleAccountSave = async (input: UpdateAccountInput) => {
+    if (editingAccount) {
+      await updateAccount(editingAccount.id, input);
+      toast.success("Account updated");
+    } else {
+      await createAccount(input);
+      toast.success("Account added");
+    }
     await accountsState.reload();
+    setEditingAccount(null);
   };
 
   return (
@@ -291,27 +318,94 @@ export default function SettingsPage() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Appearance</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Choose between light and dark mode.
-              </Typography>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={themeMode === "dark"}
-                    onChange={(e) => setThemeMode(e.target.checked ? "dark" : "light")}
-                  />
-                }
-                label="Dark mode"
-              />
-            </CardContent>
-          </Card>
+          <Stack spacing={2}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">Appearance</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Choose between light and dark mode.
+                </Typography>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={themeMode === "dark"}
+                      onChange={(e) => setThemeMode(e.target.checked ? "dark" : "light")}
+                    />
+                  }
+                  label="Dark mode"
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 1.5,
+                  }}
+                >
+                  <Typography variant="h6">Accounts</Typography>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<AddIcon />}
+                    onClick={() => {
+                      setEditingAccount(null);
+                      setAccountDialogOpen(true);
+                    }}
+                  >
+                    Add
+                  </Button>
+                </Box>
+                <Stack spacing={1}>
+                  {accounts.map((a) => (
+                    <Box
+                      key={a.id}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {a.name}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === a.type)?.label} · {a.currency} · as of{" "}
+                          {a.balanceDate.slice(0, 10)}
+                          {a.balance !== a.initialBalance &&
+                            ` · initial ${formatCurrency(a.initialBalance, a.currency)}`}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          {formatCurrency(a.balance, a.currency)}
+                        </Typography>
+                        <IconButton
+                          size="small"
+                          aria-label={`Edit ${a.name}`}
+                          onClick={() => {
+                            setEditingAccount(a);
+                            setAccountDialogOpen(true);
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Box>
+                    </Box>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Stack>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
+          <Card sx={{ height: "100%" }}>
             <CardContent>
               <Box
                 sx={{
@@ -381,55 +475,6 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 1.5,
-                }}
-              >
-                <Typography variant="h6">Accounts</Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setAccountDialogOpen(true)}
-                >
-                  Add
-                </Button>
-              </Box>
-              <Stack spacing={1}>
-                {accounts.map((a) => (
-                  <Box
-                    key={a.id}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {a.name}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === a.type)?.label} · {a.currency}
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2">
-                      {formatCurrency(a.initialBalance, a.currency)}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
       </Grid>
 
       <CategoryDialog
@@ -440,9 +485,17 @@ export default function SettingsPage() {
         onSave={handleCategorySave}
       />
       <AccountDialog
-        key={accountDialogOpen ? "account-dialog-open" : "account-dialog-closed"}
+        key={
+          accountDialogOpen
+            ? `account-dialog-open-${editingAccount?.id ?? "new"}`
+            : "account-dialog-closed"
+        }
         open={accountDialogOpen}
-        onClose={() => setAccountDialogOpen(false)}
+        onClose={() => {
+          setAccountDialogOpen(false);
+          setEditingAccount(null);
+        }}
+        initial={editingAccount}
         onSave={handleAccountSave}
       />
     </Stack>

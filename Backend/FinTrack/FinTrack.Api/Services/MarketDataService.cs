@@ -22,14 +22,7 @@ public class MarketDataService
         Http.DefaultRequestHeaders.Add("Accept", "*/*");
     }
 
-    private static readonly Dictionary<string, string> RangeMap = new()
-    {
-        ["1M"] = "1mo",
-        ["3M"] = "3mo",
-        ["YTD"] = "1y",
-        ["1Y"] = "1y",
-        ["ALL"] = "max"
-    };
+    private static readonly int MaxDailyChunkDays = 730;
 
     /// <summary>Resolves a provider symbol by trying explicit override then ticker guesses.</summary>
     public async Task<string?> ResolveSymbolAsync(string explicitSymbol, string ticker)
@@ -99,15 +92,83 @@ public class MarketDataService
         return null;
     }
 
-    /// <summary>Returns daily closes (oldest first) for a symbol, or null when unavailable.</summary>
-    public async Task<List<(DateOnly Date, decimal Close)>?> GetDailySeriesAsync(string symbol, string range = "1Y")
+    /// <summary>
+    /// Returns daily closes within [from, to] inclusive (oldest first), fetched in
+    /// chunks so Yahoo returns real daily bars instead of aggregated monthly ones.
+    /// </summary>
+    public async Task<List<(DateOnly Date, decimal Close)>?> GetDailySeriesAsync(
+        string symbol,
+        DateOnly from,
+        DateOnly to)
     {
-        var yahooRange = RangeMap.TryGetValue(range.ToUpperInvariant(), out var mapped) ? mapped : "1y";
-        var node = await FetchChartNodeAsync(symbol, yahooRange);
-
-        if (node is null)
+        if (from >= to)
             return null;
 
+        var rows = new List<(DateOnly, decimal)>();
+        var chunkStart = from;
+
+        while (chunkStart <= to)
+        {
+            var chunkEnd = chunkStart.AddDays(MaxDailyChunkDays);
+            if (chunkEnd > to)
+                chunkEnd = to;
+
+            var part = await FetchDailyRangeAsync(symbol, chunkStart, chunkEnd);
+
+            if (part is { Count: > 0 })
+                rows.AddRange(part);
+
+            chunkStart = chunkEnd.AddDays(1);
+        }
+
+        return rows
+            .DistinctBy(r => r.Item1)
+            .OrderBy(r => r.Item1)
+            .ToList() is { Count: > 0 } result
+            ? result
+            : null;
+    }
+
+    private async Task<List<(DateOnly Date, decimal Close)>?> FetchDailyRangeAsync(
+        string symbol,
+        DateOnly from,
+        DateOnly to)
+    {
+        var period1 = new DateTimeOffset(from.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeSeconds();
+        var period2 = new DateTimeOffset(to.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero).ToUnixTimeSeconds();
+
+        var url = $"https://query1.finance.yahoo.com/v8/finance/chart/{Uri.EscapeDataString(symbol.ToUpperInvariant())}?period1={period1}&period2={period2}&interval=1d";
+
+        try
+        {
+            using var response = await Http.GetAsync(url);
+            var body = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine($"[MarketData] HTTP {(int)response.StatusCode} for {symbol}: {body[..Math.Min(150, body.Length)]}");
+                return null;
+            }
+
+            var node = JsonNode.Parse(body);
+
+            if (node?["chart"]?["result"] is not { } result || result.AsArray().Count == 0)
+            {
+                Console.WriteLine($"[MarketData] empty chart for {symbol}: {body[..Math.Min(150, body.Length)]}");
+                return null;
+            }
+
+            return ParseDailyRows(node);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[MarketData] {symbol}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static List<(DateOnly Date, decimal Close)>? ParseDailyRows(JsonNode node)
+    {
         var timestamps = node["chart"]?["result"]?[0]?["timestamp"]?.AsArray();
         var closes = node["chart"]?["result"]?[0]?["indicators"]?["quote"]?[0]?["close"]?.AsArray();
 
@@ -129,9 +190,10 @@ public class MarketDataService
             if (close <= 0)
                 continue;
 
-            var date = DateTimeOffset.FromUnixTimeSeconds(tv.GetValue<long>()).UtcDateTime.ToLocalTime();
+            var date = DateOnly.FromDateTime(
+                DateTimeOffset.FromUnixTimeSeconds(tv.GetValue<long>()).UtcDateTime.Date);
 
-            rows.Add((DateOnly.FromDateTime(date), decimal.Round(close, 4)));
+            rows.Add((date, decimal.Round(close, 4)));
         }
 
         return rows.Count == 0 ? null : rows;

@@ -28,9 +28,11 @@ public class TransferService
         if (request.FromAccountId == request.ToAccountId)
             throw new Exception("Choose two different accounts for a transfer.");
 
-        var fromExists = await _context.Accounts.AnyAsync(a => a.Id == request.FromAccountId);
+        var fromAccount = await _context.Accounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == request.FromAccountId);
 
-        if (!fromExists)
+        if (fromAccount is null)
             throw new Exception("Source account not found.");
 
         var toExists = await _context.Accounts.AnyAsync(a => a.Id == request.ToAccountId);
@@ -58,6 +60,7 @@ public class TransferService
 
         var pairId = Guid.NewGuid();
         var date = request.Date;
+        var currency = NormalizeCurrency(request.Currency) ?? fromAccount.Currency;
 
         var description = string.IsNullOrWhiteSpace(request.Description)
             ? "Transfer"
@@ -69,6 +72,7 @@ public class TransferService
             CategoryId = category.Id,
             Date = date,
             Amount = request.Amount,
+            Currency = currency,
             Description = description,
             TransferPairId = pairId,
             IsOutgoingTransfer = true
@@ -80,6 +84,7 @@ public class TransferService
             CategoryId = category.Id,
             Date = date,
             Amount = request.Amount,
+            Currency = currency,
             Description = description,
             TransferPairId = pairId,
             IsOutgoingTransfer = false
@@ -98,4 +103,7 @@ public class TransferService
             ]
         };
     }
+
+    private static string? NormalizeCurrency(string currency)
+        => string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
 }

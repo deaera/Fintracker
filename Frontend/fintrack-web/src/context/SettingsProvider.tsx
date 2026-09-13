@@ -53,6 +53,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [rates],
   );
 
+  const convertFrom = useCallback(
+    (amount: number, code: string) => {
+      const r = rates?.rates[code];
+      return typeof r === "number" && r > 0 ? amount / r : amount;
+    },
+    [rates],
+  );
+
   const value = useMemo(
     () => ({
       ...settings,
@@ -61,10 +69,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       rate,
       convert,
       convertTo,
+      convertFrom,
       ratesSource: rates?.source ?? null,
       ratesUpdatedAt: rates?.updatedAt ?? null,
     }),
-    [settings, setCurrency, setThemeMode, rate, convert, convertTo, rates],
+    [settings, setCurrency, setThemeMode, rate, convert, convertTo, convertFrom, rates],
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

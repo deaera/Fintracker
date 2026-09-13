@@ -94,6 +94,10 @@ public class CurrencyService
     public decimal ConvertToBase(decimal amount, string from, Dictionary<string, decimal> rates)
         => Convert(amount, from, "EUR", rates);
 
+    /// <summary>Converts an amount to a target currency using pre-fetched rates. Missing currencies are treated as 1:1.</summary>
+    public decimal ConvertTo(decimal amount, string from, string to, Dictionary<string, decimal> rates)
+        => Convert(amount, from, to, rates);
+
     private static decimal Convert(decimal amount, string from, string to, Dictionary<string, decimal> rates)
     {
         var fromRate = rates.TryGetValue(ConvertCode(from), out var f) ? f : 1m;

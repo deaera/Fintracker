@@ -15,6 +15,7 @@ export interface SettingsContextValue extends Settings {
   rate: number;
   convert: (amount: number) => number;
   convertTo: (amount: number, code: string) => number;
+  convertFrom: (amount: number, code: string) => number;
   ratesSource: "live" | "fallback" | null;
   ratesUpdatedAt: string | null;
 }
@@ -27,6 +28,7 @@ export const SettingsContext = createContext<SettingsContextValue>({
   rate: 1,
   convert: (amount) => amount,
   convertTo: (amount) => amount,
+  convertFrom: (amount) => amount,
   ratesSource: null,
   ratesUpdatedAt: null,
 });

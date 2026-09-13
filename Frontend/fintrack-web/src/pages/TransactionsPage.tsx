@@ -50,7 +50,7 @@ import { formatCurrency, formatDate } from "../utils/format";
 type TypeFilter = "all" | "income" | "expense";
 
 export default function TransactionsPage() {
-  const { currency, convert } = useSettings();
+  const { currency, convert, convertFrom } = useSettings();
   const transactionsState = useApiData<CashTransaction[]>(getTransactions, "all");
   const accountsState = useApiData<Account[]>(getAccounts, "all");
   const categoriesState = useApiData<Category[]>(getCategories, "all");
@@ -113,7 +113,7 @@ export default function TransactionsPage() {
     const confirmed = window.confirm(
       t.isTransfer
         ? `Delete the transfer "${t.description || "Transfer"}"? Both sides of the transfer will be removed.`
-        : `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(t.amount), currency)}?`,
+        : `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(convertFrom(t.amount, t.currency)), currency)}?`,
     );
     if (!confirmed) return;
     try {
@@ -286,7 +286,7 @@ export default function TransactionsPage() {
                         : income
                           ? "+"
                           : "−"}
-                      {formatCurrency(convert(t.amount), currency)}
+                      {formatCurrency(convert(convertFrom(t.amount, t.currency)), currency)}
                     </TableCell>
                     <TableCell align="right">
                       {!t.isTransfer && (

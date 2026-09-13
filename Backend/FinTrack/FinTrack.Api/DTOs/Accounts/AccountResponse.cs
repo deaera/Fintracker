@@ -13,4 +13,10 @@ public class AccountResponse
     public string Currency { get; set; } = "EUR";
 
     public decimal InitialBalance { get; set; }
+
+    /// <summary>Date the manual balance is accurate as of.</summary>
+    public DateOnly BalanceDate { get; set; }
+
+    /// <summary>Current balance in the account's currency — initial balance adjusted by transactions after <see cref="BalanceDate"/>.</summary>
+    public decimal Balance { get; set; }
 }

@@ -9,25 +9,32 @@ namespace FinTrack.Api.Services;
 public class AnalyticsService
 {
     private readonly FinanceDbContext _context;
+    private readonly CurrencyService _currency;
 
-    public AnalyticsService(FinanceDbContext context)
+    public AnalyticsService(FinanceDbContext context, CurrencyService currency)
     {
         _context = context;
+        _currency = currency;
     }
 
     public async Task<AnalyticsResponse> GetAnalyticsAsync(int? month = null, int? year = null)
     {
         var today = DateOnly.FromDateTime(DateTime.Today);
 
+        var rates = (await _currency.GetRatesAsync()).Rates;
+
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
         var periodTransactions = await GetPeriodTransactionsAsync(month, year, today);
 
         var income = periodTransactions
             .Where(t => t.Category.Type == CategoryType.Income)
-            .Sum(t => t.Amount);
+            .Sum(t => ToEur(t.Amount, t.Currency));
 
         var expenses = periodTransactions
             .Where(t => t.Category.Type == CategoryType.Expense)
-            .Sum(t => t.Amount);
+            .Sum(t => ToEur(t.Amount, t.Currency));
 
         var savings = income - expenses;
 
@@ -61,8 +68,8 @@ public class AnalyticsService
             MonthCount = monthCount,
             BestMonth = bestMonth,
             Monthly = monthlyWithData,
-            IncomeBreakdown = BuildBreakdown(periodTransactions, CategoryType.Income, income),
-            ExpenseBreakdown = BuildBreakdown(periodTransactions, CategoryType.Expense, expenses)
+            IncomeBreakdown = BuildBreakdown(periodTransactions, CategoryType.Income, income, rates),
+            ExpenseBreakdown = BuildBreakdown(periodTransactions, CategoryType.Expense, expenses, rates)
         };
     }
 
@@ -113,6 +120,11 @@ public class AnalyticsService
             query = query.Where(t => t.Date.Year == year.Value);
         }
 
+        var rates = (await _currency.GetRatesAsync()).Rates;
+
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
         var transactions = await query.ToListAsync();
 
         return transactions
@@ -121,8 +133,8 @@ public class AnalyticsService
             {
                 Year = g.Key.Year,
                 Month = g.Key.Month,
-                Income = g.Where(x => x.Category.Type == CategoryType.Income).Sum(x => x.Amount),
-                Expenses = g.Where(x => x.Category.Type == CategoryType.Expense).Sum(x => x.Amount)
+                Income = g.Where(x => x.Category.Type == CategoryType.Income).Sum(x => ToEur(x.Amount, x.Currency)),
+                Expenses = g.Where(x => x.Category.Type == CategoryType.Expense).Sum(x => ToEur(x.Amount, x.Currency))
             })
             .OrderBy(m => m.Year)
             .ThenBy(m => m.Month)
@@ -137,18 +149,22 @@ public class AnalyticsService
     private List<CategorySpendingResponse> BuildBreakdown(
         List<CashTransaction> transactions,
         CategoryType type,
-        decimal total)
+        decimal total,
+        Dictionary<string, decimal> rates)
     {
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
         return transactions
             .Where(t => t.Category.Type == type)
             .GroupBy(t => new { t.Category.Name, t.Category.Color })
             .Select(g => new CategorySpendingResponse
             {
                 Category = g.Key.Name,
-                Amount = g.Sum(x => x.Amount),
+                Amount = g.Sum(x => ToEur(x.Amount, x.Currency)),
                 Percentage = total == 0
                     ? 0
-                    : (double)(g.Sum(x => x.Amount) / total * 100),
+                    : (double)(g.Sum(x => ToEur(x.Amount, x.Currency)) / total * 100),
                 Color = g.Key.Color
             })
             .OrderByDescending(x => x.Amount)

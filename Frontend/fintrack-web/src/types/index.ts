@@ -18,12 +18,15 @@ export interface Account {
   type: AccountType;
   currency: string;
   initialBalance: number;
+  balanceDate: string;
+  balance: number;
 }
 
 export interface CashTransaction {
   id: string;
   date: string;
   amount: number;
+  currency: string;
   description: string;
   accountId: string;
   accountName: string;
@@ -45,6 +48,7 @@ export interface LatestTransaction {
   date: string;
   description: string;
   amount: number;
+  currency: string;
   category: string;
   categoryType: CategoryType;
   account: string;
@@ -94,6 +98,7 @@ export interface Analytics {
 export interface CreateTransactionInput {
   date: string;
   amount: number;
+  currency: string;
   description: string;
   accountId: string;
   categoryId: string;
@@ -102,6 +107,7 @@ export interface CreateTransactionInput {
 export interface CreateTransferInput {
   date: string;
   amount: number;
+  currency: string;
   description: string;
   fromAccountId: string;
   toAccountId: string;
@@ -119,7 +125,10 @@ export interface CreateAccountInput {
   type: AccountType;
   currency: string;
   initialBalance: number;
+  balanceDate: string;
 }
+
+export type UpdateAccountInput = CreateAccountInput;
 
 export interface CurrencyRates {
   base: string;

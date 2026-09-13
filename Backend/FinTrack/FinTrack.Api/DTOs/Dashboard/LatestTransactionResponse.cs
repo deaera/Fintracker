@@ -12,6 +12,8 @@ public class LatestTransactionResponse
 
     public decimal Amount { get; set; }
 
+    public string Currency { get; set; } = "EUR";
+
     public string Category { get; set; } = string.Empty;
 
     public CategoryType CategoryType { get; set; }

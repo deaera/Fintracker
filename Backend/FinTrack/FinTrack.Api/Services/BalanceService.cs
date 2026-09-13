@@ -37,32 +37,50 @@ public class BalanceService
     }
 
     public async Task<decimal> GetAccountBalanceAsync(Guid accountId)
-{
-    var initialBalance = await _context.Accounts
+    {
+var account = await _context.Accounts
+        .AsNoTracking()
         .Where(a => a.Id == accountId)
-        .Select(a => a.InitialBalance)
+        .Select(a => new { a.InitialBalance, a.Currency, a.BalanceDate })
         .SingleAsync();
 
-    var income = await _context.CashTransactions
-        .Where(t => t.AccountId == accountId &&
-                    t.Category.Type == CategoryType.Income)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+        var rates = (await _currency.GetRatesAsync()).Rates;
 
-    var expenses = await _context.CashTransactions
-        .Where(t => t.AccountId == accountId &&
-                    t.Category.Type == CategoryType.Expense)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+        decimal ToAccountCurrency(decimal amount, string currency)
+            => _currency.ConvertTo(amount, currency, account.Currency, rates);
 
-    var transferOut = await _context.CashTransactions
-        .Where(t => t.AccountId == accountId && t.IsOutgoingTransfer)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+        var transactions = await _context.CashTransactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Where(t => t.AccountId == accountId && t.Date > account.BalanceDate)
+            .ToListAsync();
 
-    var transferIn = await _context.CashTransactions
-        .Where(t => t.AccountId == accountId &&
-                    t.TransferPairId != null &&
-                    !t.IsOutgoingTransfer)
-        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+        decimal income = 0;
+        decimal expenses = 0;
+        decimal transferOut = 0;
+        decimal transferIn = 0;
 
-    return initialBalance + income - expenses - transferOut + transferIn;
-}
+        foreach (var t in transactions)
+        {
+            var value = ToAccountCurrency(t.Amount, t.Currency);
+
+            switch (t.Category.Type)
+            {
+                case CategoryType.Income:
+                    income += value;
+                    break;
+                case CategoryType.Expense:
+                    expenses += value;
+                    break;
+                case CategoryType.Transfer when t.IsOutgoingTransfer:
+                    transferOut += value;
+                    break;
+                case CategoryType.Transfer:
+                    transferIn += value;
+                    break;
+            }
+        }
+
+        return account.InitialBalance + income - expenses - transferOut + transferIn;
+    }
 }

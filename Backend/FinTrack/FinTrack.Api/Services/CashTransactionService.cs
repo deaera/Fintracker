@@ -39,6 +39,7 @@ public class CashTransactionService
                 Id = t.Id,
                 Date = t.Date,
                 Amount = t.Amount,
+                Currency = t.Currency,
                 Description = t.Description,
 
                 AccountId = t.AccountId,
@@ -65,6 +66,7 @@ public class CashTransactionService
                 Id = t.Id,
                 Date = t.Date,
                 Amount = t.Amount,
+                Currency = t.Currency,
                 Description = t.Description,
 
                 AccountId = t.AccountId,
@@ -81,9 +83,11 @@ public class CashTransactionService
 
     public async Task<CashTransactionResponse> CreateAsync(CreateCashTransactionRequest request)
     {
-        var accountExists = await _context.Accounts.AnyAsync(a => a.Id == request.AccountId);
+        var account = await _context.Accounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Id == request.AccountId);
 
-        if (!accountExists)
+        if (account is null)
             throw new Exception("Account not found.");
 
         var category = await _context.Categories
@@ -96,6 +100,7 @@ public class CashTransactionService
         {
             Date = request.Date,
             Amount = request.Amount,
+            Currency = NormalizeCurrency(request.Currency) ?? account.Currency,
             Description = request.Description,
             AccountId = request.AccountId,
             CategoryId = request.CategoryId
@@ -130,6 +135,7 @@ public class CashTransactionService
 
         transaction.Date = request.Date;
         transaction.Amount = request.Amount;
+        transaction.Currency = NormalizeCurrency(request.Currency) ?? transaction.Currency;
         transaction.Description = request.Description;
 
         if (transaction.TransferPairId is Guid pairId)
@@ -143,6 +149,7 @@ public class CashTransactionService
                 leg.Date = request.Date;
                 leg.Amount = request.Amount;
                 leg.Description = request.Description;
+                leg.Currency = transaction.Currency;
             }
         }
         else
@@ -180,4 +187,7 @@ public class CashTransactionService
 
         return true;
     }
+
+    private static string? NormalizeCurrency(string currency)
+        => string.IsNullOrWhiteSpace(currency) ? null : currency.Trim().ToUpperInvariant();
 }

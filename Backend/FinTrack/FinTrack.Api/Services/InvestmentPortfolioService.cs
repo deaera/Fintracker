@@ -328,7 +328,9 @@ public class InvestmentPortfolioService
             };
         }
 
-        var series = await _market.GetDailySeriesAsync(resolved) ?? [];
+        var from = DateOnly.Parse(portfolioSeries.Dates[0]);
+        var to = DateOnly.Parse(portfolioSeries.Dates[^1]);
+        var series = await _market.GetDailySeriesAsync(resolved, from, to) ?? [];
 
         if (series.Count == 0)
         {
@@ -610,6 +612,7 @@ public class InvestmentPortfolioService
 
     private async Task<PerformanceResponse> BuildPerformanceAsync(string range)
     {
+        var rangeKey = range.ToUpperInvariant();
         var rates = (await _currency.GetRatesAsync()).Rates;
         var today = DateOnly.FromDateTime(DateTime.Today);
 
@@ -620,10 +623,13 @@ public class InvestmentPortfolioService
         var accountById = accounts.ToDictionary(a => a.Id);
         var assetById = assets.ToDictionary(a => a.Id);
 
-        var start = ResolveStart(today, range, transactions);
-        var stepDays = range.ToUpperInvariant() == "ALL" ? 7 : 1;
+        var start = ResolveStart(today, rangeKey, transactions);
 
-        var dates = BuildDates(start, today, stepDays);
+        var dates = rangeKey == "ALL"
+            ? BuildMonthlyDates(start, today)
+            : BuildDates(start, today, 1);
+
+        await BackfillHistoricalPricesAsync(assets, transactions, today);
 
         var slots = new Dictionary<(Guid AccountId, Guid AssetId), Slot>();
         var accountCash = accounts.ToDictionary(a => a.Id, a => a.OpeningBalance);
@@ -782,6 +788,126 @@ public class InvestmentPortfolioService
             .OrderBy(t => t.Date)
             .ThenBy(t => t.Id)
             .ToListAsync();
+
+    /// <summary>
+    /// Fetches full daily price history per held asset (Yahoo) and stores it in
+    /// PriceHistory so the portfolio value graph can be valued with the price at
+    /// each point in time instead of today's price. Assets with a manual price
+    /// are left untouched.
+    /// </summary>
+    private async Task BackfillHistoricalPricesAsync(
+        List<Asset> assets,
+        List<InvestmentTransaction> transactions,
+        DateOnly today)
+    {
+        if (assets.Count == 0)
+            return;
+
+        if (!assets.Any(a => a.ManualPrice is null))
+            return;
+
+        var earliestTxByAsset = transactions
+            .Where(t => t.AssetId is { } id && assets.Any(a => a.Id == id))
+            .GroupBy(t => t.AssetId!.Value)
+            .ToDictionary(g => g.Key, g => g.Min(t => t.Date));
+
+        if (earliestTxByAsset.Count == 0)
+            return;
+
+        var ranges = await _context.PriceHistory
+            .AsNoTracking()
+            .Where(p => !p.IsManual)
+            .GroupBy(p => p.AssetId)
+            .Select(g => new
+            {
+                AssetId = g.Key,
+                MinDate = g.Min(p => p.Date),
+                MaxDate = g.Max(p => p.Date)
+            })
+            .ToListAsync();
+
+        var rangeById = ranges.ToDictionary(r => r.AssetId, r => (Min: r.MinDate, Max: r.MaxDate));
+        var staleThreshold = today.AddDays(-35);
+
+        foreach (var asset in assets)
+        {
+            if (asset.ManualPrice.HasValue)
+                continue;
+
+            if (!earliestTxByAsset.TryGetValue(asset.Id, out var earliestTx))
+                continue;
+
+            var hasRange = rangeById.TryGetValue(asset.Id, out var existing);
+
+            var needsBackfill = !hasRange
+                || existing.Min > earliestTx.AddDays(45)
+                || (existing.Max < staleThreshold && existing.Max != existing.Min);
+
+            if (!needsBackfill)
+                continue;
+
+            var symbol = await _market.ResolveSymbolAsync(asset.StooqSymbol ?? string.Empty, asset.Ticker);
+
+            if (symbol is null)
+                continue;
+
+            var series = await _market.GetDailySeriesAsync(
+                symbol,
+                from: earliestTx.AddDays(-45),
+                to: today);
+
+            if (series is null || series.Count == 0)
+                continue;
+
+            var existingRows = await _context.PriceHistory
+                .Where(p => p.AssetId == asset.Id && !p.IsManual)
+                .ToListAsync();
+
+            if (existingRows.Count > 0)
+                _context.PriceHistory.RemoveRange(existingRows);
+
+            var rows = series
+                .Select(s => new PriceHistory
+                {
+                    AssetId = asset.Id,
+                    Date = s.Date,
+                    Price = s.Close,
+                    IsManual = false
+                })
+                .ToList();
+
+            _context.PriceHistory.AddRange(rows);
+
+            if (!string.Equals(asset.StooqSymbol, symbol, StringComparison.OrdinalIgnoreCase))
+            {
+                asset.StooqSymbol = symbol;
+                _context.Assets.Update(asset);
+            }
+        }
+
+        if (_context.ChangeTracker.HasChanges())
+            await _context.SaveChangesAsync();
+    }
+
+    /// <summary>Last calendar day of every month from the start month up to today.</summary>
+    private static List<DateOnly> BuildMonthlyDates(DateOnly start, DateOnly today)
+    {
+        var dates = new List<DateOnly>();
+        var month = new DateOnly(start.Year, start.Month, 1);
+        var lastMonth = new DateOnly(today.Year, today.Month, 1);
+
+        for (var m = month; m <= lastMonth; m = m.AddMonths(1))
+        {
+            var lastDay = m.AddMonths(1).AddDays(-1);
+
+            if (lastDay < today)
+                dates.Add(lastDay);
+        }
+
+        dates.Add(today);
+
+        return dates.Distinct().ToList();
+    }
 
     private static DateOnly ResolveStart(
         DateOnly today,

@@ -10,6 +10,8 @@ public class CashTransactionResponse
 
     public decimal Amount { get; set; }
 
+    public string Currency { get; set; } = "EUR";
+
     public string Description { get; set; } = string.Empty;
 
     public Guid AccountId { get; set; }
