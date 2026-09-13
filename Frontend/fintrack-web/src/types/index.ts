@@ -1,7 +1,7 @@
 export const AccountType = { Checking: 0, Savings: 1, CreditCard: 2, Cash: 3 } as const;
 export type AccountType = (typeof AccountType)[keyof typeof AccountType];
 
-export const CategoryType = { Income: 0, Expense: 1 } as const;
+export const CategoryType = { Income: 0, Expense: 1, Transfer: 2 } as const;
 export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType];
 
 export interface Category {
@@ -30,6 +30,8 @@ export interface CashTransaction {
   categoryId: string;
   categoryName: string;
   categoryType: CategoryType;
+  isTransfer: boolean;
+  isOutgoingTransfer: boolean;
 }
 
 export interface CategorySummary {
@@ -95,6 +97,14 @@ export interface CreateTransactionInput {
   description: string;
   accountId: string;
   categoryId: string;
+}
+
+export interface CreateTransferInput {
+  date: string;
+  amount: number;
+  description: string;
+  fromAccountId: string;
+  toAccountId: string;
 }
 
 export interface CreateCategoryInput {

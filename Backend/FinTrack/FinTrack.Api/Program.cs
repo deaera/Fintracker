@@ -15,6 +15,7 @@ builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<CategoryService>();
 builder.Services.AddScoped<DatabaseSeeder>();
 builder.Services.AddScoped<CashTransactionService>();
+builder.Services.AddScoped<TransferService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AnalyticsService>();
 builder.Services.AddScoped<BalanceService>();

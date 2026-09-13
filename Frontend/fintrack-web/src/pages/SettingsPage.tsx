@@ -352,20 +352,28 @@ export default function SettingsPage() {
                     />
                     <Box>
                       <Typography variant="caption" color="text.secondary" sx={{ mr: 1 }}>
-                        {c.type === CategoryType.Income ? "Income" : "Expense"}
+                        {c.type === CategoryType.Income
+                          ? "Income"
+                          : c.type === CategoryType.Expense
+                            ? "Expense"
+                            : "Transfer"}
                       </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setEditingCategory(c);
-                          setCategoryDialogOpen(true);
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" color="error" onClick={() => handleCategoryDelete(c)}>
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {c.type !== CategoryType.Transfer && (
+                        <>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setEditingCategory(c);
+                              setCategoryDialogOpen(true);
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleCategoryDelete(c)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      )}
                     </Box>
                   </Box>
                 ))}

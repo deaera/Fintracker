@@ -46,7 +46,9 @@ public class CashTransactionService
 
                 CategoryId = t.CategoryId,
                 CategoryName = t.Category.Name,
-                CategoryType = t.Category.Type
+                CategoryType = t.Category.Type,
+                IsTransfer = t.TransferPairId != null,
+                IsOutgoingTransfer = t.IsOutgoingTransfer
             })
             .ToListAsync();
     }
@@ -70,7 +72,9 @@ public class CashTransactionService
 
                 CategoryId = t.CategoryId,
                 CategoryName = t.Category.Name,
-                CategoryType = t.Category.Type
+                CategoryType = t.Category.Type,
+                IsTransfer = t.TransferPairId != null,
+                IsOutgoingTransfer = t.IsOutgoingTransfer
             })
             .FirstOrDefaultAsync();
     }
@@ -127,8 +131,25 @@ public class CashTransactionService
         transaction.Date = request.Date;
         transaction.Amount = request.Amount;
         transaction.Description = request.Description;
-        transaction.AccountId = request.AccountId;
-        transaction.CategoryId = request.CategoryId;
+
+        if (transaction.TransferPairId is Guid pairId)
+        {
+            var pair = await _context.CashTransactions
+                .Where(t => t.TransferPairId == pairId && t.Id != transaction.Id)
+                .ToListAsync();
+
+            foreach (var leg in pair)
+            {
+                leg.Date = request.Date;
+                leg.Amount = request.Amount;
+                leg.Description = request.Description;
+            }
+        }
+        else
+        {
+            transaction.AccountId = request.AccountId;
+            transaction.CategoryId = request.CategoryId;
+        }
 
         await _context.SaveChangesAsync();
 
@@ -142,7 +163,18 @@ public class CashTransactionService
         if (transaction is null)
             return false;
 
-        _context.CashTransactions.Remove(transaction);
+        if (transaction.TransferPairId is Guid pairId)
+        {
+            var legs = await _context.CashTransactions
+                .Where(t => t.TransferPairId == pairId)
+                .ToListAsync();
+
+            _context.CashTransactions.RemoveRange(legs);
+        }
+        else
+        {
+            _context.CashTransactions.Remove(transaction);
+        }
 
         await _context.SaveChangesAsync();
 

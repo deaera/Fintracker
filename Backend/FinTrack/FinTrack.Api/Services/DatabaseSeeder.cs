@@ -20,6 +20,18 @@ public class DatabaseSeeder
             _context.Categories.AddRange(SeedCategories());
             await _context.SaveChangesAsync();
         }
+
+        if (!_context.Categories.Any(c => c.Name == "Transfer" && c.Type == CategoryType.Transfer))
+        {
+            _context.Categories.Add(new Category
+            {
+                Name = "Transfer",
+                Type = CategoryType.Transfer,
+                Icon = "↔️",
+                Color = "#64748B"
+            });
+            await _context.SaveChangesAsync();
+        }
     }
 
     private static List<Category> SeedCategories() =>

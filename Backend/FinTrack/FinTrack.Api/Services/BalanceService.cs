@@ -53,6 +53,16 @@ public class BalanceService
                     t.Category.Type == CategoryType.Expense)
         .SumAsync(t => (decimal?)t.Amount) ?? 0;
 
-    return initialBalance + income - expenses;
+    var transferOut = await _context.CashTransactions
+        .Where(t => t.AccountId == accountId && t.IsOutgoingTransfer)
+        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+    var transferIn = await _context.CashTransactions
+        .Where(t => t.AccountId == accountId &&
+                    t.TransferPairId != null &&
+                    !t.IsOutgoingTransfer)
+        .SumAsync(t => (decimal?)t.Amount) ?? 0;
+
+    return initialBalance + income - expenses - transferOut + transferIn;
 }
 }

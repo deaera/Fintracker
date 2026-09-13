@@ -20,10 +20,12 @@ import {
   Typography,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import TransactionFormDialog from "../components/TransactionFormDialog";
+import TransferDialog from "../components/TransferDialog";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
 import { getAccounts } from "../services/accountService";
@@ -34,7 +36,14 @@ import {
   getTransactions,
   updateTransaction,
 } from "../services/cashTransactionService";
-import type { Account, CashTransaction, Category, CreateTransactionInput } from "../types";
+import { createTransfer } from "../services/transferService";
+import type {
+  Account,
+  CashTransaction,
+  Category,
+  CreateTransactionInput,
+  CreateTransferInput,
+} from "../types";
 import { CategoryType } from "../types";
 import { formatCurrency, formatDate } from "../utils/format";
 
@@ -51,6 +60,7 @@ export default function TransactionsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [accountFilter, setAccountFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashTransaction | null>(null);
 
   const transactions = useMemo(() => transactionsState.data ?? [], [transactionsState.data]);
@@ -101,16 +111,24 @@ export default function TransactionsPage() {
 
   const handleDelete = async (t: CashTransaction) => {
     const confirmed = window.confirm(
-      `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(t.amount), currency)}?`,
+      t.isTransfer
+        ? `Delete the transfer "${t.description || "Transfer"}"? Both sides of the transfer will be removed.`
+        : `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(t.amount), currency)}?`,
     );
     if (!confirmed) return;
     try {
       await deleteTransaction(t.id);
-      toast.success("Transaction deleted");
+      toast.success(t.isTransfer ? "Transfer deleted" : "Transaction deleted");
       await transactionsState.reload();
     } catch {
       toast.error("Could not delete transaction.");
     }
+  };
+
+  const handleTransfer = async (input: CreateTransferInput) => {
+    await createTransfer(input);
+    toast.success("Transfer added");
+    await transactionsState.reload();
   };
 
   if (transactionsState.loading || accountsState.loading || categoriesState.loading) {
@@ -148,6 +166,13 @@ export default function TransactionsPage() {
             {filtered.length} of {transactions.length} entries
           </Typography>
         </Box>
+        <Button
+          variant="outlined"
+          startIcon={<SwapHorizIcon />}
+          onClick={() => setTransferDialogOpen(true)}
+        >
+          Transfer
+        </Button>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
           Add transaction
         </Button>
@@ -233,6 +258,11 @@ export default function TransactionsPage() {
               {filtered.map((t) => {
                 const income = t.categoryType === CategoryType.Income;
                 const category = categories.find((c) => c.id === t.categoryId);
+                const color = t.isTransfer
+                  ? "text.secondary"
+                  : income
+                    ? "success.main"
+                    : "error.main";
                 return (
                   <TableRow key={t.id} hover>
                     <TableCell>{formatDate(t.date)}</TableCell>
@@ -248,20 +278,22 @@ export default function TransactionsPage() {
                       />
                     </TableCell>
                     <TableCell>{t.accountName}</TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{
-                        fontWeight: 600,
-                        color: income ? "success.main" : "error.main",
-                      }}
-                    >
-                      {income ? "+" : "−"}
+                    <TableCell align="right" sx={{ fontWeight: 600, color }}>
+                      {t.isTransfer
+                        ? t.isOutgoingTransfer
+                          ? "−"
+                          : "+"
+                        : income
+                          ? "+"
+                          : "−"}
                       {formatCurrency(convert(t.amount), currency)}
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(t)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
+                      {!t.isTransfer && (
+                        <IconButton size="small" onClick={() => openEdit(t)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
                       <IconButton size="small" color="error" onClick={() => handleDelete(t)}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -289,6 +321,13 @@ export default function TransactionsPage() {
         categories={categories}
         initial={editing}
         onSubmit={handleSubmit}
+      />
+
+      <TransferDialog
+        open={transferDialogOpen}
+        onClose={() => setTransferDialogOpen(false)}
+        accounts={accounts}
+        onSubmit={handleTransfer}
       />
     </Stack>
   );

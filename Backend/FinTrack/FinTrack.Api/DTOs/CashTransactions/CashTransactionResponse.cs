@@ -21,4 +21,8 @@ public class CashTransactionResponse
     public string CategoryName { get; set; } = string.Empty;
 
     public CategoryType CategoryType { get; set; }
+
+    public bool IsTransfer { get; set; }
+
+    public bool IsOutgoingTransfer { get; set; }
 }

@@ -21,4 +21,10 @@ public class CashTransaction
     public decimal Amount { get; set; }
 
     public string Description { get; set; } = string.Empty;
+
+    /// <summary>Links the two legs of an account transfer; null for regular transactions.</summary>
+    public Guid? TransferPairId { get; set; }
+
+    /// <summary>True for the departing leg of a transfer (only meaningful when <see cref="TransferPairId"/> is set).</summary>
+    public bool IsOutgoingTransfer { get; set; }
 }

@@ -223,10 +223,16 @@ export default function DashboardPage() {
                         color:
                           t.categoryType === CategoryType.Income
                             ? "success.main"
-                            : "error.main",
+                            : t.categoryType === CategoryType.Transfer
+                              ? "text.secondary"
+                              : "error.main",
                       }}
                     >
-                      {t.categoryType === CategoryType.Income ? "+" : "−"}
+                      {t.categoryType === CategoryType.Income
+                        ? "+"
+                        : t.categoryType === CategoryType.Transfer
+                          ? "⇄ "
+                          : "−"}
                       {formatCurrency(convert(t.amount), currency)}
                     </Typography>
                   }
