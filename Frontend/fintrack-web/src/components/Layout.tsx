@@ -17,12 +17,14 @@ import {
   useTheme,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import PaymentsIcon from "@mui/icons-material/Payments";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import InsightsIcon from "@mui/icons-material/Insights";
 import SettingsIcon from "@mui/icons-material/Settings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { DISPLAY_CURRENCIES, useSettings } from "../context/settings";
+import { alpha } from "@mui/material/styles";
 
 const DRAWER_WIDTH = 240;
 
@@ -52,35 +54,86 @@ export default function Layout() {
   const location = useLocation();
   const { currency, setCurrency } = useSettings();
 
-  const drawerContent = (
-    <Box sx={{ pt: 2 }}>
-      <Typography variant="h6" sx={{ px: 3, pb: 2, fontWeight: 700 }}>
-        FinTrack
-      </Typography>
-      <List>
-        {NAV_ITEMS.map((item) => (
-          <ListItemButton
-            key={item.path}
-            selected={location.pathname === item.path}
-            onClick={() => {
-              navigate(item.path);
-              if (isMobile) setDrawerOpen(false);
-            }}
-          >
-            <ListItemIcon
+  const drawerContent = (belowAppBar: boolean) => (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        pt: belowAppBar ? 0 : 2.5,
+      }}
+    >
+      {belowAppBar && <Toolbar />}
+      <Box sx={{ px: 3, pb: 2.5, display: "flex", alignItems: "center", gap: 1.25 }}>
+        <Box
+          sx={{
+            width: 38,
+            height: 38,
+            borderRadius: 2.5,
+            display: "grid",
+            placeItems: "center",
+            bgcolor: "primary.main",
+            color: "primary.contrastText",
+            boxShadow: "0 6px 16px rgba(79,70,229,0.35)",
+          }}
+        >
+          <PaymentsIcon fontSize="small" />
+        </Box>
+        <Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+            FinTrack
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Personal finance manager
+          </Typography>
+        </Box>
+      </Box>
+      <List
+        sx={{ px: 1.5, pt: 1, display: "flex", flexDirection: "column", gap: 0.5 }}
+      >
+        {NAV_ITEMS.map((item) => {
+          const selected = location.pathname === item.path;
+          return (
+            <ListItemButton
+              key={item.path}
+              selected={selected}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile) setDrawerOpen(false);
+              }}
               sx={{
-                minWidth: 40,
-                color:
-                  location.pathname === item.path
-                    ? "primary.main"
-                    : "text.secondary",
+                borderRadius: 2,
+                mb: 0.25,
+                ...(selected
+                  ? {
+                      bgcolor: alpha(theme.palette.primary.main, 0.14),
+                      "&:hover": { bgcolor: alpha(theme.palette.primary.main, 0.2) },
+                    }
+                  : {}),
               }}
             >
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.label} />
-          </ListItemButton>
-        ))}
+              <ListItemIcon
+                sx={{
+                  minWidth: 40,
+                  color: selected ? "primary.main" : "text.secondary",
+                }}
+              >
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText
+                primary={item.label}
+                slotProps={{
+                  primary: {
+                    sx: {
+                      fontWeight: selected ? 700 : 500,
+                      color: selected ? "primary.main" : "text.primary",
+                    },
+                  },
+                }}
+              />
+            </ListItemButton>
+          );
+        })}
       </List>
     </Box>
   );
@@ -96,6 +149,9 @@ export default function Layout() {
           borderBottom: "1px solid",
           borderColor: "divider",
           boxShadow: "none",
+          ...(isMobile
+            ? { left: 0, width: "100%" }
+            : { left: DRAWER_WIDTH, width: `calc(100% - ${DRAWER_WIDTH}px)` }),
         }}
       >
         <Toolbar>
@@ -133,7 +189,7 @@ export default function Layout() {
           onClose={() => setDrawerOpen(false)}
           slotProps={{ paper: { sx: { width: DRAWER_WIDTH } } }}
         >
-          {drawerContent}
+          {drawerContent(true)}
         </Drawer>
       ) : (
         <Drawer
@@ -148,7 +204,7 @@ export default function Layout() {
             },
           }}
         >
-          {drawerContent}
+          {drawerContent(false)}
         </Drawer>
       )}
 

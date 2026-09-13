@@ -13,6 +13,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PayrollIcon from "@mui/icons-material/Payments";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -38,22 +39,46 @@ interface StatCardProps {
 }
 
 function StatCard({ title, value, icon, color, sub }: StatCardProps) {
+  const theme = useTheme();
+  const accent =
+    color === "success.main"
+      ? theme.palette.success.main
+      : color === "primary.main"
+        ? theme.palette.primary.main
+        : color === "error.main"
+          ? theme.palette.error.main
+          : theme.palette.action.active;
+
   return (
     <Card sx={{ height: "100%" }}>
-      <CardContent>
+      <CardContent sx={{ p: 2.5, height: "100%" }}>
         <Stack spacing={1.5}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, color: "text.secondary" }}>
-            {icon}
-            <Typography variant="body2">{title}</Typography>
-          </Box>
-          <Typography
-            variant="h5"
-            sx={{ fontWeight: 700, color: color ?? "text.primary" }}
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: 2,
+              display: "grid",
+              placeItems: "center",
+              bgcolor: alpha(accent, 0.12),
+              color: accent,
+            }}
           >
-            {value}
-          </Typography>
+            {icon}
+          </Box>
+          <Box>
+            <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
+              {title}
+            </Typography>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 800, color: color ?? "text.primary", mt: 0.25 }}
+            >
+              {value}
+            </Typography>
+          </Box>
           {sub && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="caption" color="text.secondary">
               {sub}
             </Typography>
           )}

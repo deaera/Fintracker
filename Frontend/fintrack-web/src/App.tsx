@@ -135,6 +135,18 @@ function AppContent() {
             ...(!isDark ? {} : { filled: { backgroundColor: chipBg } }),
           },
         },
+        MuiTableCell: {
+          styleOverrides: {
+            head: {
+              fontWeight: 700,
+              color: "text.secondary",
+              backgroundColor: isDark ? "rgba(15,23,42,0.3)" : "rgba(15,23,42,0.03)",
+            },
+            root: {
+              borderColor: isDark ? "rgba(148,163,184,0.12)" : "rgba(15,23,42,0.08)",
+            },
+          },
+        },
         MuiMenu: {
           styleOverrides: {
             paper: {
@@ -142,6 +154,17 @@ function AppContent() {
             },
           },
         },
+      },
+      typography: {
+        fontFamily: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          '"Helvetica Neue"',
+          "Arial",
+          "sans-serif",
+        ].join(","),
       },
     });
   }, [themeMode, isDark]);
