@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   Box,
@@ -24,7 +24,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import TransactionFormDialog from "../components/TransactionFormDialog";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../context/settings";
+import { useApiData } from "../hooks/useApiData";
 import { getAccounts } from "../services/accountService";
 import { getCategories } from "../services/categoryService";
 import {
@@ -33,23 +34,17 @@ import {
   getTransactions,
   updateTransaction,
 } from "../services/cashTransactionService";
-import type {
-  Account,
-  CashTransaction,
-  Category,
-  CreateTransactionInput,
-} from "../types";
+import type { Account, CashTransaction, Category, CreateTransactionInput } from "../types";
 import { CategoryType } from "../types";
 import { formatCurrency, formatDate } from "../utils/format";
 
 type TypeFilter = "all" | "income" | "expense";
 
 export default function TransactionsPage() {
-  const { currency } = useSettings();
-  const [transactions, setTransactions] = useState<CashTransaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { currency, convert } = useSettings();
+  const transactionsState = useApiData<CashTransaction[]>(getTransactions, "all");
+  const accountsState = useApiData<Account[]>(getAccounts, "all");
+  const categoriesState = useApiData<Category[]>(getCategories, "all");
 
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -58,26 +53,9 @@ export default function TransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashTransaction | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      const [txns, accs, cats] = await Promise.all([
-        getTransactions(),
-        getAccounts(),
-        getCategories(),
-      ]);
-      setTransactions(txns);
-      setAccounts(accs);
-      setCategories(cats);
-    } catch {
-      toast.error("Could not load transactions.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const transactions = useMemo(() => transactionsState.data ?? [], [transactionsState.data]);
+  const accounts = useMemo(() => accountsState.data ?? [], [accountsState.data]);
+  const categories = useMemo(() => categoriesState.data ?? [], [categoriesState.data]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -118,27 +96,35 @@ export default function TransactionsPage() {
       await createTransaction(input);
       toast.success("Transaction added");
     }
-    await load();
+    await transactionsState.reload();
   };
 
   const handleDelete = async (t: CashTransaction) => {
     const confirmed = window.confirm(
-      `Delete "${t.description || t.categoryName}" for ${formatCurrency(t.amount, currency)}?`,
+      `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(t.amount), currency)}?`,
     );
     if (!confirmed) return;
     try {
       await deleteTransaction(t.id);
       toast.success("Transaction deleted");
-      await load();
+      await transactionsState.reload();
     } catch {
       toast.error("Could not delete transaction.");
     }
   };
 
-  if (loading) {
+  if (transactionsState.loading || accountsState.loading || categoriesState.loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (transactionsState.error || accountsState.error || categoriesState.error) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
+        <Typography color="text.secondary">Could not load transactions.</Typography>
       </Box>
     );
   }
@@ -270,7 +256,7 @@ export default function TransactionsPage() {
                       }}
                     >
                       {income ? "+" : "−"}
-                      {formatCurrency(t.amount, currency)}
+                      {formatCurrency(convert(t.amount), currency)}
                     </TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEdit(t)}>
@@ -296,6 +282,7 @@ export default function TransactionsPage() {
       </Card>
 
       <TransactionFormDialog
+        key={dialogOpen ? "transaction-form-open" : "transaction-form-closed"}
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         accounts={accounts}

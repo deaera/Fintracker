@@ -2,6 +2,7 @@ import { Box, Typography } from "@mui/material";
 import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import type { CategorySummary } from "../types";
 import { formatCurrency } from "../utils/format";
+import { useSettings } from "../context/settings";
 
 interface Props {
   data: CategorySummary[];
@@ -9,6 +10,8 @@ interface Props {
 }
 
 export default function CategoryPie({ data, currency }: Props) {
+  const { convert } = useSettings();
+
   if (data.length === 0) {
     return (
       <Box sx={{ py: 6, textAlign: "center", color: "text.secondary" }}>
@@ -21,7 +24,7 @@ export default function CategoryPie({ data, currency }: Props) {
     <ResponsiveContainer width="100%" height={280}>
       <PieChart>
         <Pie
-          data={data}
+          data={data.map((d) => ({ ...d, amount: convert(d.amount) }))}
           dataKey="amount"
           nameKey="category"
           innerRadius={55}

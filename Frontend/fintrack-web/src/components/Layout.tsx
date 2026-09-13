@@ -9,6 +9,8 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  MenuItem,
+  Select,
   Toolbar,
   Typography,
   useMediaQuery,
@@ -19,6 +21,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import InsightsIcon from "@mui/icons-material/Insights";
 import SettingsIcon from "@mui/icons-material/Settings";
+import { DISPLAY_CURRENCIES, useSettings } from "../context/settings";
 
 const DRAWER_WIDTH = 240;
 
@@ -28,6 +31,12 @@ const NAV_ITEMS = [
   { label: "Analytics", path: "/analytics", icon: <InsightsIcon /> },
   { label: "Settings", path: "/settings", icon: <SettingsIcon /> },
 ];
+
+const CURRENCY_LABELS: Record<string, string> = {
+  EUR: "€ EUR",
+  USD: "$ USD",
+  RON: "lei RON",
+};
 
 function pageTitle(pathname: string): string {
   return NAV_ITEMS.find((n) => n.path === pathname)?.label ?? "FinTrack";
@@ -39,6 +48,7 @@ export default function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { currency, setCurrency } = useSettings();
 
   const drawerContent = (
     <Box sx={{ pt: 2 }}>
@@ -99,6 +109,19 @@ export default function Layout() {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             {pageTitle(location.pathname)}
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Select
+            size="small"
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value)}
+            sx={{ minWidth: 110 }}
+          >
+            {DISPLAY_CURRENCIES.map((c) => (
+              <MenuItem key={c} value={c}>
+                {CURRENCY_LABELS[c]}
+              </MenuItem>
+            ))}
+          </Select>
         </Toolbar>
       </AppBar>
 

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import {
   Box,
   Card,
@@ -13,9 +12,10 @@ import {
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import MonthlyTrendChart from "../components/MonthlyTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../context/settings";
+import { useApiData } from "../hooks/useApiData";
 import { getAnalytics } from "../services/analyticsService";
-import type { Analytics, Period } from "../types";
+import type { Period } from "../types";
 import { formatCurrency, monthLabel, monthName } from "../utils/format";
 
 function StatCard({ title, value, sub, color }: { title: string; value: string; sub?: string; color?: string }) {
@@ -39,34 +39,23 @@ function StatCard({ title, value, sub, color }: { title: string; value: string; 
 }
 
 export default function AnalyticsPage() {
-  const { currency } = useSettings();
+  const { currency, convert } = useSettings();
   const [period, setPeriod] = useState<Period>({ month: null, year: null });
-  const [data, setData] = useState<Analytics | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    getAnalytics(period)
-      .then((d) => {
-        if (active) {
-          setData(d);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) setLoading(false);
-        toast.error("Could not load analytics data.");
-      });
-    return () => {
-      active = false;
-    };
-  }, [period]);
+  const { data, loading, error } = useApiData(
+    () => getAnalytics(period),
+    `${period.year ?? "alltime"}:${period.month ?? "all"}`,
+  );
 
   if (loading || !data) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
+        {error ? (
+          <Typography color="text.secondary">
+            Could not load analytics data.
+          </Typography>
+        ) : (
+          <CircularProgress />
+        )}
       </Box>
     );
   }
@@ -75,7 +64,7 @@ export default function AnalyticsPage() {
 
   const breakdownData = data.expenseBreakdown.map((c) => ({
     name: c.category,
-    amount: c.amount,
+    amount: convert(c.amount),
     percentage: c.percentage,
     color: c.color,
   }));
@@ -104,22 +93,22 @@ export default function AnalyticsPage() {
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <StatCard title="Total income" value={formatCurrency(data.totalIncome, currency)} color="success.main" />
+          <StatCard title="Total income" value={formatCurrency(convert(data.totalIncome), currency)} color="success.main" />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <StatCard title="Total expenses" value={formatCurrency(data.totalExpenses, currency)} />
+          <StatCard title="Total expenses" value={formatCurrency(convert(data.totalExpenses), currency)} />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Net savings"
-            value={formatCurrency(data.savings, currency)}
+            value={formatCurrency(convert(data.savings), currency)}
             sub={`${data.savingsRate.toFixed(1)}% savings rate`}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 6 }}>
           <StatCard
             title="Average monthly spending"
-            value={formatCurrency(data.averageMonthlySpending, currency)}
+            value={formatCurrency(convert(data.averageMonthlySpending), currency)}
             sub={data.monthCount > 0 ? `across ${data.monthCount} month${data.monthCount > 1 ? "s" : ""} with activity` : "no data yet"}
           />
         </Grid>
@@ -133,7 +122,7 @@ export default function AnalyticsPage() {
             }
             sub={
               data.bestMonth
-                ? `${monthName(data.bestMonth.month)} saved ${formatCurrency(data.bestMonth.savings, currency)}`
+                ? `${monthName(data.bestMonth.month)} saved ${formatCurrency(convert(data.bestMonth.savings), currency)}`
                 : undefined
             }
           />
@@ -199,7 +188,7 @@ export default function AnalyticsPage() {
                           {c.category}
                         </Typography>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatCurrency(c.amount, currency)}{" "}
+                          {formatCurrency(convert(c.amount), currency)}{" "}
                           <Box component="span" color="text.secondary">
                             · {c.percentage.toFixed(1)}%
                           </Box>
@@ -238,7 +227,7 @@ export default function AnalyticsPage() {
                     >
                       <Typography variant="body2">{c.category}</Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: "success.main" }}>
-                        {formatCurrency(c.amount, currency)}{" "}
+                        {formatCurrency(convert(c.amount), currency)}{" "}
                         <Box component="span" color="text.secondary" sx={{ fontWeight: 400 }}>
                           ({c.percentage.toFixed(1)}%)
                         </Box>

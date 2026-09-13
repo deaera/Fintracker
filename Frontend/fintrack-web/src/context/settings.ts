@@ -2,6 +2,8 @@ import { createContext, useContext } from "react";
 
 export type ThemeMode = "light" | "dark";
 
+export const DISPLAY_CURRENCIES = ["EUR", "RON", "USD"];
+
 export interface Settings {
   currency: string;
   themeMode: ThemeMode;
@@ -10,6 +12,11 @@ export interface Settings {
 export interface SettingsContextValue extends Settings {
   setCurrency: (currency: string) => void;
   setThemeMode: (mode: ThemeMode) => void;
+  rate: number;
+  convert: (amount: number) => number;
+  convertTo: (amount: number, code: string) => number;
+  ratesSource: "live" | "fallback" | null;
+  ratesUpdatedAt: string | null;
 }
 
 export const SettingsContext = createContext<SettingsContextValue>({
@@ -17,9 +24,13 @@ export const SettingsContext = createContext<SettingsContextValue>({
   themeMode: "light",
   setCurrency: () => {},
   setThemeMode: () => {},
+  rate: 1,
+  convert: (amount) => amount,
+  convertTo: (amount) => amount,
+  ratesSource: null,
+  ratesUpdatedAt: null,
 });
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useSettings(): SettingsContextValue {
   return useContext(SettingsContext);
 }

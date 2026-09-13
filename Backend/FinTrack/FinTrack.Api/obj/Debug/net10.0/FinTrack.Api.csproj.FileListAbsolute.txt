@@ -121,3 +121,4 @@
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/obj/Debug/net10.0/FinTrack.Api.MvcApplicationPartsAssemblyInfo.cs
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/Microsoft.AspNetCore.OpenApi.dll
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/Microsoft.OpenApi.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/obj/Debug/net10.0/FinTrack.Api.sourcelink.json

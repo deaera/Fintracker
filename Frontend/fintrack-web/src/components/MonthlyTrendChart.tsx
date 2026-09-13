@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import type { MonthlyTrend } from "../types";
 import { formatCurrency, monthLabel } from "../utils/format";
+import { useSettings } from "../context/settings";
 
 interface Props {
   data: MonthlyTrend[];
@@ -18,11 +19,13 @@ interface Props {
 }
 
 export default function MonthlyTrendChart({ data, currency }: Props) {
+  const { convert } = useSettings();
+
   const chartData = data.map((m) => ({
     label: monthLabel(m.year, m.month),
-    Income: m.income,
-    Expenses: m.expenses,
-    Savings: m.savings,
+    Income: convert(m.income),
+    Expenses: convert(m.expenses),
+    Savings: convert(m.savings),
   }));
 
   if (chartData.length === 0) {

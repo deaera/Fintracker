@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import toast from "react-hot-toast";
 import {
   Box,
   Card,
@@ -21,9 +20,10 @@ import SavingsIcon from "@mui/icons-material/Savings";
 import CategoryPie from "../components/CategoryPie";
 import MonthlyTrendChart from "../components/MonthlyTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings, DISPLAY_CURRENCIES } from "../context/settings";
+import { useApiData } from "../hooks/useApiData";
 import { getDashboard } from "../services/dashboardService";
-import type { CategorySummary, Dashboard, Period } from "../types";
+import type { CategorySummary, Period } from "../types";
 import { CategoryType } from "../types";
 import { formatCurrency, formatDate } from "../utils/format";
 
@@ -62,34 +62,23 @@ function StatCard({ title, value, icon, color, sub }: StatCardProps) {
 }
 
 export default function DashboardPage() {
-  const { currency } = useSettings();
+  const { currency, convert, convertTo } = useSettings();
   const [period, setPeriod] = useState<Period>({ month: null, year: null });
-  const [data, setData] = useState<Dashboard | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    getDashboard(period)
-      .then((d) => {
-        if (active) {
-          setData(d);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) setLoading(false);
-        toast.error("Could not load dashboard data.");
-      });
-    return () => {
-      active = false;
-    };
-  }, [period]);
+  const { data, loading, error } = useApiData(
+    () => getDashboard(period),
+    `${period.year ?? "alltime"}:${period.month ?? "all"}`,
+  );
 
   if (loading || !data) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
+        {error ? (
+          <Typography color="text.secondary">
+            Could not load dashboard data.
+          </Typography>
+        ) : (
+          <CircularProgress />
+        )}
       </Box>
     );
   }
@@ -131,14 +120,17 @@ export default function DashboardPage() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Total balance"
-            value={formatCurrency(data.totalBalance, currency)}
+            value={formatCurrency(convert(data.totalBalance), currency)}
             icon={<AccountBalanceWalletIcon />}
+            sub={DISPLAY_CURRENCIES.filter((c) => c !== currency)
+              .map((c) => formatCurrency(convertTo(data.totalBalance, c), c))
+              .join("  ·  ")}
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Income"
-            value={formatCurrency(data.income, currency)}
+            value={formatCurrency(convert(data.income), currency)}
             color="success.main"
             icon={<PayrollIcon />}
           />
@@ -146,7 +138,7 @@ export default function DashboardPage() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Expenses"
-            value={formatCurrency(data.expenses, currency)}
+            value={formatCurrency(convert(data.expenses), currency)}
             icon={<ReceiptLongIcon />}
             sub={`${expensesPie.length} categories`}
           />
@@ -154,7 +146,7 @@ export default function DashboardPage() {
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Savings"
-            value={formatCurrency(data.savings, currency)}
+            value={formatCurrency(convert(data.savings), currency)}
             icon={<SavingsIcon />}
             sub={`${data.savingsRate.toFixed(1)}% savings rate`}
           />
@@ -216,7 +208,7 @@ export default function DashboardPage() {
                       }}
                     >
                       {t.categoryType === CategoryType.Income ? "+" : "−"}
-                      {formatCurrency(t.amount, currency)}
+                      {formatCurrency(convert(t.amount), currency)}
                     </Typography>
                   }
                 >

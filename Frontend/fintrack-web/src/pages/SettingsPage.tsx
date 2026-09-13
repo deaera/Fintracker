@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 import {
   Box,
@@ -27,7 +27,8 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
-import { useSettings } from "../context/SettingsContext";
+import { useSettings } from "../context/settings";
+import { useApiData } from "../hooks/useApiData";
 import { getAccounts, createAccount } from "../services/accountService";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../services/categoryService";
 import type { Account, Category, CreateAccountInput, CreateCategoryInput } from "../types";
@@ -57,22 +58,12 @@ interface CategoryDialogProps {
 }
 
 function CategoryDialog({ open, onClose, initial, onSave }: CategoryDialogProps) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<CategoryType>(CategoryType.Expense);
-  const [icon, setIcon] = useState("🛒");
-  const [color, setColor] = useState("#EF5350");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [type, setType] = useState<CategoryType>(initial?.type ?? CategoryType.Expense);
+  const [icon, setIcon] = useState(initial?.icon || "🛒");
+  const [color, setColor] = useState(initial?.color ?? "#EF5350");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setSubmitting(false);
-    setName(initial?.name ?? "");
-    setType(initial?.type ?? CategoryType.Expense);
-    setIcon(initial?.icon || "🛒");
-    setColor(initial?.color ?? "#EF5350");
-  }, [open, initial]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -165,16 +156,6 @@ function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setSubmitting(false);
-    setName("");
-    setType(AccountType.Checking);
-    setCurrency("EUR");
-    setInitialBalance("0");
-  }, [open]);
-
   const handleSave = async () => {
     if (!name.trim()) {
       setError("Name is required.");
@@ -255,26 +236,15 @@ function AccountDialog({ open, onClose, onSave }: AccountDialogProps) {
 }
 
 export default function SettingsPage() {
-  const { currency, setCurrency, themeMode, setThemeMode } = useSettings();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const { themeMode, setThemeMode } = useSettings();
+  const categoriesState = useApiData<Category[]>(getCategories, "settings-categories");
+  const accountsState = useApiData<Account[]>(getAccounts, "settings-accounts");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
 
-  const load = async () => {
-    try {
-      const [cats, accs] = await Promise.all([getCategories(), getAccounts()]);
-      setCategories(cats);
-      setAccounts(accs);
-    } catch {
-      toast.error("Could not load settings data.");
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
+  const categories = categoriesState.data ?? [];
+  const accounts = accountsState.data ?? [];
 
   const handleCategorySave = async (input: CreateCategoryInput) => {
     if (editingCategory) {
@@ -284,7 +254,7 @@ export default function SettingsPage() {
       await createCategory(input);
       toast.success("Category added");
     }
-    await load();
+    await categoriesState.reload();
     setEditingCategory(null);
   };
 
@@ -296,7 +266,7 @@ export default function SettingsPage() {
     try {
       await deleteCategory(category.id);
       toast.success("Category deleted");
-      await load();
+      await categoriesState.reload();
     } catch {
       toast.error("Could not delete category.");
     }
@@ -305,7 +275,7 @@ export default function SettingsPage() {
   const handleAccountSave = async (input: CreateAccountInput) => {
     await createAccount(input);
     toast.success("Account added");
-    await load();
+    await accountsState.reload();
   };
 
   return (
@@ -315,39 +285,11 @@ export default function SettingsPage() {
           Settings
         </Typography>
         <Typography variant="body2" color="text.secondary">
-          Currency, appearance and account structure
+          Appearance, categories and accounts — switch display currency from the top bar
         </Typography>
       </Box>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">Display currency</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Used for all amounts shown in the app.
-              </Typography>
-              <FormControl fullWidth size="small">
-                <InputLabel>Currency</InputLabel>
-                <Select
-                  label="Currency"
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                >
-                  {CURRENCIES.map((c) => (
-                    <MenuItem key={c} value={c}>
-                      {c}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Typography variant="body2" sx={{ mt: 2, fontWeight: 600 }}>
-                {formatCurrency(1234.56, currency)}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-
         <Grid size={{ xs: 12, md: 6 }}>
           <Card>
             <CardContent>
@@ -483,12 +425,14 @@ export default function SettingsPage() {
       </Grid>
 
       <CategoryDialog
+        key={categoryDialogOpen ? "category-dialog-open" : "category-dialog-closed"}
         open={categoryDialogOpen}
         onClose={() => setCategoryDialogOpen(false)}
         initial={editingCategory}
         onSave={handleCategorySave}
       />
       <AccountDialog
+        key={accountDialogOpen ? "account-dialog-open" : "account-dialog-closed"}
         open={accountDialogOpen}
         onClose={() => setAccountDialogOpen(false)}
         onSave={handleAccountSave}

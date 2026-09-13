@@ -18,6 +18,7 @@ builder.Services.AddScoped<CashTransactionService>();
 builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AnalyticsService>();
 builder.Services.AddScoped<BalanceService>();
+builder.Services.AddSingleton<CurrencyService>();
 
 builder.Services.AddHttpLogging(options =>
 {

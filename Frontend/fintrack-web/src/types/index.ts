@@ -109,6 +109,13 @@ export interface CreateAccountInput {
   initialBalance: number;
 }
 
+export interface CurrencyRates {
+  base: string;
+  rates: Record<string, number>;
+  updatedAt: string;
+  source: "live" | "fallback";
+}
+
 export interface Period {
   month: number | null;
   year: number | null;

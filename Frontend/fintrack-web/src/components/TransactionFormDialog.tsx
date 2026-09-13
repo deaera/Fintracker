@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Button,
   Dialog,
@@ -34,30 +34,19 @@ export default function TransactionFormDialog({
   initial,
   onSubmit,
 }: Props) {
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
-  const [categoryId, setCategoryId] = useState("");
-  const [accountId, setAccountId] = useState("");
+  const firstExpenseCategory = categories.find((c) => c.type === CategoryType.Expense);
+
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [amount, setAmount] = useState(initial ? String(initial.amount) : "");
+  const [date, setDate] = useState(
+    toDateInputValue(initial?.date ?? new Date().toISOString().slice(0, 10)),
+  );
+  const [categoryId, setCategoryId] = useState(
+    initial?.categoryId ?? firstExpenseCategory?.id ?? categories[0]?.id ?? "",
+  );
+  const [accountId, setAccountId] = useState(initial?.accountId ?? accounts[0]?.id ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!open) return;
-    setError("");
-    setSubmitting(false);
-    setDescription(initial?.description ?? "");
-    setAmount(initial ? String(initial.amount) : "");
-    setDate(toDateInputValue(initial?.date ?? new Date().toISOString().slice(0, 10)));
-    setCategoryId(
-      initial?.categoryId ??
-        categories.find((c) => c.type === CategoryType.Expense)?.id ??
-        categories[0]?.id ??
-        "",
-    );
-    setAccountId(initial?.accountId ?? accounts[0]?.id ?? "");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial]);
 
   const incomeCategories = categories.filter((c) => c.type === CategoryType.Income);
   const expenseCategories = categories.filter((c) => c.type === CategoryType.Expense);
