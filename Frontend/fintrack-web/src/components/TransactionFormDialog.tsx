@@ -1,0 +1,178 @@
+import { useEffect, useState } from "react";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  ListSubheader,
+  MenuItem,
+  TextField,
+  Typography,
+} from "@mui/material";
+import type { Account, CashTransaction, Category, CreateTransactionInput } from "../types";
+import { CategoryType } from "../types";
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  accounts: Account[];
+  categories: Category[];
+  initial: CashTransaction | null;
+  onSubmit: (input: CreateTransactionInput) => Promise<void>;
+}
+
+function toDateInputValue(date: string): string {
+  return date.slice(0, 10);
+}
+
+export default function TransactionFormDialog({
+  open,
+  onClose,
+  accounts,
+  categories,
+  initial,
+  onSubmit,
+}: Props) {
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [categoryId, setCategoryId] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setError("");
+    setSubmitting(false);
+    setDescription(initial?.description ?? "");
+    setAmount(initial ? String(initial.amount) : "");
+    setDate(toDateInputValue(initial?.date ?? new Date().toISOString().slice(0, 10)));
+    setCategoryId(
+      initial?.categoryId ??
+        categories.find((c) => c.type === CategoryType.Expense)?.id ??
+        categories[0]?.id ??
+        "",
+    );
+    setAccountId(initial?.accountId ?? accounts[0]?.id ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
+
+  const incomeCategories = categories.filter((c) => c.type === CategoryType.Income);
+  const expenseCategories = categories.filter((c) => c.type === CategoryType.Expense);
+
+  const handleSubmit = async () => {
+    const amountValue = Number(amount);
+    if (!description.trim()) {
+      setError("Description is required.");
+      return;
+    }
+    if (!amountValue || amountValue <= 0) {
+      setError("Amount must be greater than zero.");
+      return;
+    }
+    if (!categoryId || !accountId) {
+      setError("Please select a category and an account.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    try {
+      await onSubmit({
+        description: description.trim(),
+        amount: amountValue,
+        date,
+        categoryId,
+        accountId,
+      });
+      onClose();
+    } catch {
+      setError("Something went wrong. Check that the backend is running.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>{initial ? "Edit transaction" : "Add transaction"}</DialogTitle>
+      <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: 2 }}>
+        <TextField
+          label="Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          fullWidth
+          autoFocus
+        />
+
+        <TextField
+          label="Amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          type="number"
+          inputProps={{ min: 0.01, step: 0.01 }}
+          fullWidth
+        />
+
+        <TextField
+          label="Date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          type="date"
+          fullWidth
+          InputLabelProps={{ shrink: true }}
+        />
+
+        <TextField
+          select
+          label="Category"
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          fullWidth
+          SelectProps={{ MenuProps: { sx: { maxHeight: 320 } } }}
+        >
+          {incomeCategories.length > 0 && <ListSubheader>Income</ListSubheader>}
+          {incomeCategories.map((c) => (
+            <MenuItem key={c.id} value={c.id}>
+              {c.icon} {c.name}
+            </MenuItem>
+          ))}
+          {expenseCategories.length > 0 && <ListSubheader>Expenses</ListSubheader>}
+          {expenseCategories.map((c) => (
+            <MenuItem key={c.id} value={c.id}>
+              {c.icon} {c.name}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          label="Account"
+          value={accountId}
+          onChange={(e) => setAccountId(e.target.value)}
+          fullWidth
+        >
+          {accounts.map((a) => (
+            <MenuItem key={a.id} value={a.id}>
+              {a.name}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {error && (
+          <Typography variant="body2" color="error">
+            {error}
+          </Typography>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button variant="contained" onClick={handleSubmit} disabled={submitting}>
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
