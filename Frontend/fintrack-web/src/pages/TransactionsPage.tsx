@@ -15,6 +15,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -28,6 +29,7 @@ import TransactionFormDialog from "../components/TransactionFormDialog";
 import TransferDialog from "../components/TransferDialog";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
+import { usePagination } from "../hooks/usePagination";
 import { getAccounts } from "../services/accountService";
 import { getCategories } from "../services/categoryService";
 import {
@@ -87,6 +89,8 @@ export default function TransactionsPage() {
       })
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [transactions, search, typeFilter, categoryFilter, accountFilter]);
+
+  const { slice: pageRows, paginationProps, count } = usePagination(filtered);
 
   const openAdd = () => {
     setEditing(null);
@@ -255,7 +259,7 @@ export default function TransactionsPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((t) => {
+              {pageRows.map((t) => {
                 const income = t.categoryType === CategoryType.Income;
                 const category = categories.find((c) => c.id === t.categoryId);
                 const color = t.isTransfer
@@ -311,6 +315,9 @@ export default function TransactionsPage() {
             </TableBody>
           </Table>
         </TableContainer>
+        {count > paginationProps.rowsPerPage && (
+          <TablePagination {...paginationProps} sx={{ borderTop: "1px solid", borderColor: "divider" }} />
+        )}
       </Card>
 
       <TransactionFormDialog

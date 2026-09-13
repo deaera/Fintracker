@@ -13,6 +13,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -30,6 +31,7 @@ import {
 import dayjs from "dayjs";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
+import { usePagination } from "../../hooks/usePagination";
 import {
   downloadInvestmentCsv,
   getInvestmentDividends,
@@ -42,6 +44,7 @@ export default function DividendsTab() {
   const { currency, convert, convertTo } = useSettings();
   const [year, setYear] = useState(dayjs().year());
   const state = useApiData(() => getInvestmentDividends(year), `div:${year}`);
+  const { slice: pageRows, paginationProps, count } = usePagination(state.data?.payments ?? []);
 
   if (state.loading || !state.data) {
     return (
@@ -161,7 +164,7 @@ export default function DividendsTab() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {data.payments.map((p) => (
+              {pageRows.map((p) => (
                 <TableRow key={p.id} hover>
                   <TableCell>{formatDate(p.date)}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{p.ticker}</TableCell>
@@ -182,6 +185,9 @@ export default function DividendsTab() {
             </TableBody>
           </Table>
         </TableContainer>
+        {count > paginationProps.rowsPerPage && (
+          <TablePagination {...paginationProps} sx={{ borderTop: "1px solid", borderColor: "divider" }} />
+        )}
       </Card>
 
       {data.upcoming.length > 0 && (

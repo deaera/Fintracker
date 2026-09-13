@@ -14,6 +14,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -23,6 +24,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
+import { usePagination } from "../../hooks/usePagination";
 import {
   deleteInvestmentTransaction,
   getInvestmentAccounts,
@@ -62,6 +64,8 @@ export default function TransactionsTab() {
   const transactions = useMemo(() => transactionsState.data ?? [], [transactionsState.data]);
   const accounts = useMemo(() => accountsState.data ?? [], [accountsState.data]);
   const assets = useMemo(() => assetsState.data ?? [], [assetsState.data]);
+
+  const { slice: pageRows, paginationProps, count } = usePagination(transactions);
 
   if (transactionsState.loading || accountsState.loading || assetsState.loading) {
     return (
@@ -144,7 +148,7 @@ export default function TransactionsTab() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions.map((t) => (
+              {pageRows.map((t) => (
                 <TableRow key={t.id} hover>
                   <TableCell>{formatDate(t.date)}</TableCell>
                   <TableCell>
@@ -207,6 +211,9 @@ export default function TransactionsTab() {
             </TableBody>
           </Table>
         </TableContainer>
+        {count > paginationProps.rowsPerPage && (
+          <TablePagination {...paginationProps} sx={{ borderTop: "1px solid", borderColor: "divider" }} />
+        )}
       </Card>
 
       <InvestmentTransactionDialog
