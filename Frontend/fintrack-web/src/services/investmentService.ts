@@ -17,6 +17,10 @@ import type {
   PerformanceResponse,
   PriceHistoryRow,
   PriceRefreshResponse,
+  XtbImportCommitInput,
+  XtbImportCommitResponse,
+  XtbImportParseInput,
+  XtbImportParseResponse,
 } from "../types";
 
 const BASE = "/investments";
@@ -174,4 +178,27 @@ export async function downloadInvestmentCsv(kind: "sales" | "dividends" | "gains
   link.download = `investments-${kind}.csv`;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+export async function parseXtbImport(input: XtbImportParseInput): Promise<XtbImportParseResponse> {
+  const { data } = await api.post<XtbImportParseResponse>(`${BASE}/import/xtb/parse`, input);
+  return data;
+}
+
+export async function parseXtbWorkbook(
+  file: File,
+  accountCurrency: string,
+): Promise<XtbImportParseResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("accountCurrency", accountCurrency);
+  const { data } = await api.post<XtbImportParseResponse>(`${BASE}/import/xtb/file`, form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return data;
+}
+
+export async function commitXtbImport(input: XtbImportCommitInput): Promise<XtbImportCommitResponse> {
+  const { data } = await api.post<XtbImportCommitResponse>(`${BASE}/import/xtb/commit`, input);
+  return data;
 }

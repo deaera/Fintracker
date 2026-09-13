@@ -296,6 +296,71 @@ export interface AddPriceInput {
   price: number;
 }
 
+export interface XtbImportRow {
+  rawType: string;
+  type: InvestmentTransactionType | null;
+  supported: boolean;
+  reason: string;
+  ticker: string;
+  name: string;
+  assetClass: string;
+  date: string;
+  quantity: number;
+  price: number;
+  amount: number;
+  note: string;
+}
+
+export interface XtbReconciliationRow {
+  ticker: string;
+  expectedQuantity: number;
+  importedQuantity: number;
+  match: boolean;
+}
+
+export interface XtbClosedRow {
+  ticker: string;
+  trades: number;
+  brokerProfit: number;
+  computedProfit: number;
+}
+
+export interface XtbImportParseResponse {
+  accountCurrency: string;
+  sourceFile: string;
+  parsedSheets: string[];
+  cashRows: string;
+  rows: XtbImportRow[];
+  reconciliation: XtbReconciliationRow[] | null;
+  closedPositions: XtbClosedRow[] | null;
+  totalCount: number;
+  supportedCount: number;
+  skippedCount: number;
+  newAssets: number;
+  finalCash: number;
+}
+
+export interface XtbImportParseInput {
+  cashRows: string;
+  openPositions?: string;
+  accountCurrency: string;
+}
+
+export interface XtbImportCommitInput {
+  accountName: string;
+  accountCurrency: string;
+  cashRows: string;
+}
+
+export interface XtbImportCommitResponse {
+  accountId: string;
+  imported: number;
+  deleted: number;
+  skipped: number;
+  createdAssets: string[];
+  finalCash: number;
+}
+
 export interface Period {
   month: number | null;
   year: number | null;

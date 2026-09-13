@@ -14,17 +14,20 @@ public class InvestmentsController : ControllerBase
     private readonly InvestmentAccountService _accounts;
     private readonly InvestmentTransactionService _transactions;
     private readonly InvestmentPortfolioService _portfolio;
+    private readonly XtbImportService _xtbImport;
 
     public InvestmentsController(
         AssetService assets,
         InvestmentAccountService accounts,
         InvestmentTransactionService transactions,
-        InvestmentPortfolioService portfolio)
+        InvestmentPortfolioService portfolio,
+        XtbImportService xtbImport)
     {
         _assets = assets;
         _accounts = accounts;
         _transactions = transactions;
         _portfolio = portfolio;
+        _xtbImport = xtbImport;
     }
 
     [HttpGet("overview")]
@@ -90,6 +93,40 @@ public class InvestmentsController : ControllerBase
             "text/csv",
             $"investments-{kind}-{DateTime.Today:yyyy-MM-dd}.csv");
     }
+
+    [HttpPost("import/xtb/parse")]
+    public async Task<ActionResult<XtbImportParseResponse>> ParseXtbImport(XtbImportParseRequest request)
+        => Ok(await _xtbImport.ParseAsync(request.CashRows, request.OpenPositions, request.AccountCurrency));
+
+    [HttpPost("import/xtb/file")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<XtbImportParseResponse>> ParseXtbFile(
+        IFormFile file,
+        [FromForm] string accountCurrency = "EUR")
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest("No file was uploaded.");
+
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+
+        try
+        {
+            return Ok(await _xtbImport.ParseWorkbookAsync(file.FileName, ms.ToArray(), accountCurrency));
+        }
+        catch (InvalidDataException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest("Could not read the workbook: " + (ex.InnerException?.Message ?? ex.Message));
+        }
+    }
+
+    [HttpPost("import/xtb/commit")]
+    public async Task<ActionResult<XtbImportCommitResponse>> CommitXtbImport(XtbImportCommitRequest request)
+        => Ok(await _xtbImport.CommitAsync(request.AccountName, request.AccountCurrency, request.CashRows));
 
     // ---- Accounts ----
 

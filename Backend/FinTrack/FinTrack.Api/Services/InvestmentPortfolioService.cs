@@ -482,6 +482,7 @@ public class InvestmentPortfolioService
                     case InvestmentTransactionType.Dividend:
                     case InvestmentTransactionType.Interest:
                         realizedEur += ToEur(t.Amount, account.Currency);
+                        accountCash[t.InvestmentAccountId] += t.Amount;
                         break;
                 }
             }

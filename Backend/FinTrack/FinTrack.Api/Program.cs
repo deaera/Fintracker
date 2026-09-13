@@ -24,6 +24,7 @@ builder.Services.AddScoped<AssetService>();
 builder.Services.AddScoped<InvestmentAccountService>();
 builder.Services.AddScoped<InvestmentTransactionService>();
 builder.Services.AddScoped<InvestmentPortfolioService>();
+builder.Services.AddScoped<XtbImportService>();
 
 builder.Services.AddHttpLogging(options =>
 {

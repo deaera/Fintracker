@@ -122,3 +122,11 @@
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/Microsoft.AspNetCore.OpenApi.dll
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/Microsoft.OpenApi.dll
 /Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/obj/Debug/net10.0/FinTrack.Api.sourcelink.json
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/ClosedXML.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/ClosedXML.Parser.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/DocumentFormat.OpenXml.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/DocumentFormat.OpenXml.Framework.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/ExcelNumberFormat.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/RBush.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/SixLabors.Fonts.dll
+/Users/andreeahusleag/Desktop/Personal/Personal finance/Backend/FinTrack/FinTrack.Api/bin/Debug/net10.0/System.IO.Packaging.dll
