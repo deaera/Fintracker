@@ -7,26 +7,33 @@ namespace FinTrack.Api.Services;
 public class BalanceService
 {
     private readonly FinanceDbContext _context;
+    private readonly CurrencyService _currency;
 
-    public BalanceService(FinanceDbContext context)
+    public BalanceService(FinanceDbContext context, CurrencyService currency)
     {
         _context = context;
+        _currency = currency;
     }
 
+    /// <summary>Sum of all account balances, normalized to EUR.</summary>
     public async Task<decimal> GetTotalCashAsync()
     {
+        var rates = (await _currency.GetRatesAsync()).Rates;
+
         var accounts = await _context.Accounts
             .AsNoTracking()
+            .Select(a => new { a.Id, a.Currency })
             .ToListAsync();
 
-        decimal total = 0;
+        decimal totalEur = 0;
 
         foreach (var account in accounts)
         {
-            total += await GetAccountBalanceAsync(account.Id);
+            var balance = await GetAccountBalanceAsync(account.Id);
+            totalEur += _currency.ConvertToBase(balance, account.Currency, rates);
         }
 
-        return total;
+        return totalEur;
     }
 
     public async Task<decimal> GetAccountBalanceAsync(Guid accountId)
