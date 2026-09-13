@@ -106,18 +106,20 @@ export default function Layout() {
         <Drawer
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
-          PaperProps={{ sx: { width: DRAWER_WIDTH } }}
+          slotProps={{ paper: { sx: { width: DRAWER_WIDTH } } }}
         >
           {drawerContent}
         </Drawer>
       ) : (
         <Drawer
           variant="permanent"
-          PaperProps={{
-            sx: {
-              width: DRAWER_WIDTH,
-              borderRight: "1px solid",
-              borderColor: "divider",
+          slotProps={{
+            paper: {
+              sx: {
+                width: DRAWER_WIDTH,
+                borderRight: "1px solid",
+                borderColor: "divider",
+              },
             },
           }}
         >

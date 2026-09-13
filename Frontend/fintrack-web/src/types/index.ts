@@ -1,14 +1,8 @@
-export enum CategoryType {
-  Income = 0,
-  Expense = 1,
-}
+export const AccountType = { Checking: 0, Savings: 1, CreditCard: 2, Cash: 3 } as const;
+export type AccountType = (typeof AccountType)[keyof typeof AccountType];
 
-export enum AccountType {
-  Checking = 0,
-  Savings = 1,
-  CreditCard = 2,
-  Cash = 3,
-}
+export const CategoryType = { Income: 0, Expense: 1 } as const;
+export type CategoryType = (typeof CategoryType)[keyof typeof CategoryType];
 
 export interface Category {
   id: string;

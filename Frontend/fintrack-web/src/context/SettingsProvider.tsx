@@ -1,16 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-
-type ThemeMode = "light" | "dark";
-
-interface Settings {
-  currency: string;
-  themeMode: ThemeMode;
-}
-
-interface SettingsContextValue extends Settings {
-  setCurrency: (currency: string) => void;
-  setThemeMode: (mode: ThemeMode) => void;
-}
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SettingsContext, type Settings } from "./settings";
 
 const STORAGE_KEY = "fintrack.settings";
 
@@ -25,17 +14,10 @@ function loadSettings(): Settings {
       };
     }
   } catch {
-    // ignore
+    // ignore malformed storage
   }
   return { currency: "EUR", themeMode: "light" };
 }
-
-export const SettingsContext = createContext<SettingsContextValue>({
-  currency: "EUR",
-  themeMode: "light",
-  setCurrency: () => {},
-  setThemeMode: () => {},
-});
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(loadSettings);
@@ -48,7 +30,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => ({ ...prev, currency }));
   }, []);
 
-  const setThemeMode = useCallback((themeMode: ThemeMode) => {
+  const setThemeMode = useCallback((themeMode: Settings["themeMode"]) => {
     setSettings((prev) => ({ ...prev, themeMode }));
   }, []);
 
@@ -58,8 +40,4 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
-}
-
-export function useSettings() {
-  return useContext(SettingsContext);
 }

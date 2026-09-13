@@ -112,7 +112,7 @@ export default function TransactionFormDialog({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           type="number"
-          inputProps={{ min: 0.01, step: 0.01 }}
+          slotProps={{ htmlInput: { min: 0.01, step: 0.01 } }}
           fullWidth
         />
 
@@ -122,7 +122,7 @@ export default function TransactionFormDialog({
           onChange={(e) => setDate(e.target.value)}
           type="date"
           fullWidth
-          InputLabelProps={{ shrink: true }}
+          slotProps={{ inputLabel: { shrink: true } }}
         />
 
         <TextField
@@ -131,7 +131,6 @@ export default function TransactionFormDialog({
           value={categoryId}
           onChange={(e) => setCategoryId(e.target.value)}
           fullWidth
-          SelectProps={{ MenuProps: { sx: { maxHeight: 320 } } }}
         >
           {incomeCategories.length > 0 && <ListSubheader>Income</ListSubheader>}
           {incomeCategories.map((c) => (

@@ -5,7 +5,6 @@ import {
   Box,
   Card,
   CardContent,
-  Chip,
   CircularProgress,
   Divider,
   Grid,
@@ -15,8 +14,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PayrollIcon from "@mui/icons-material/Payments";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
