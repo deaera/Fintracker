@@ -4,6 +4,10 @@ public class DashboardResponse
 {
     public decimal TotalBalance { get; set; }
 
+    public decimal InvestmentValue { get; set; }
+
+    public decimal NetWorth { get; set; }
+
     public decimal Income { get; set; }
 
     public decimal Expenses { get; set; }

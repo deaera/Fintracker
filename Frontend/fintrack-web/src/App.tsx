@@ -7,6 +7,7 @@ import { SettingsProvider } from "./context/SettingsProvider";
 import { useSettings } from "./context/settings";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import DashboardPage from "./pages/DashboardPage";
+import InvestmentsPage from "./pages/Investments/InvestmentsPage";
 import SettingsPage from "./pages/SettingsPage";
 import TransactionsPage from "./pages/TransactionsPage";
 
@@ -49,6 +50,7 @@ function AppContent() {
           <Route element={<Layout />}>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/transactions" element={<TransactionsPage />} />
+            <Route path="/investments" element={<InvestmentsPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>

@@ -19,6 +19,11 @@ builder.Services.AddScoped<DashboardService>();
 builder.Services.AddScoped<AnalyticsService>();
 builder.Services.AddScoped<BalanceService>();
 builder.Services.AddSingleton<CurrencyService>();
+builder.Services.AddSingleton<MarketDataService>();
+builder.Services.AddScoped<AssetService>();
+builder.Services.AddScoped<InvestmentAccountService>();
+builder.Services.AddScoped<InvestmentTransactionService>();
+builder.Services.AddScoped<InvestmentPortfolioService>();
 
 builder.Services.AddHttpLogging(options =>
 {

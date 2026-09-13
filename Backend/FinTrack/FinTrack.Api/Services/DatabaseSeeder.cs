@@ -1,5 +1,6 @@
 using FinTrack.Api.Data;
 using FinTrack.Api.Entities;
+using FinTrack.Api.Utils.Enums;
 
 namespace FinTrack.Api.Services;
 
@@ -14,6 +15,8 @@ public class DatabaseSeeder
 
     public async Task SeedAsync()
     {
+        await SeedInvestmentsAsync();
+
         if (!_context.Categories.Any())
         {
             _context.Categories.AddRange(SeedCategories());
@@ -71,6 +74,181 @@ public class DatabaseSeeder
             cash.Id);
 
         _context.CashTransactions.AddRange(transactions);
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedInvestmentsAsync()
+    {
+        if (_context.InvestmentAccounts.Any())
+            return;
+
+        var account = new InvestmentAccount
+        {
+            Name = "Interactive Brokers",
+            Institution = "Interactive Brokers",
+            Currency = "EUR",
+            OpeningBalance = 5000
+        };
+
+        var vwce = new Asset
+        {
+            Ticker = "VWCE",
+            Name = "Vanguard FTSE All-World ETF",
+            Type = AssetType.ETF,
+            Currency = "EUR",
+            StooqSymbol = "VWCE.DE"
+        };
+
+        var vusa = new Asset
+        {
+            Ticker = "VUSA",
+            Name = "Vanguard S&P 500 UCITS ETF",
+            Type = AssetType.ETF,
+            Currency = "USD",
+            StooqSymbol = "VOO"
+        };
+
+        var msft = new Asset
+        {
+            Ticker = "MSFT",
+            Name = "Microsoft Corp.",
+            Type = AssetType.Stock,
+            Currency = "USD",
+            StooqSymbol = "msft.us"
+        };
+
+        _context.InvestmentAccounts.Add(account);
+        _context.Assets.AddRange(vwce, vusa, msft);
+        await _context.SaveChangesAsync();
+
+        var today = DateTime.Today;
+        var random = new Random(7);
+
+        var transactions = new List<InvestmentTransaction>();
+        var prices = new List<PriceHistory>();
+        var vwcePrice = 118m;
+        decimal vusaPrice = 470m;
+        decimal msftPrice = 410m;
+
+        for (var offset = 5; offset >= 0; offset--)
+        {
+            var monthStart = today.AddMonths(-offset);
+            var daysInMonth = DateTime.DaysInMonth(monthStart.Year, monthStart.Month);
+            var lastDay = offset == 0 ? Math.Min(today.Day, daysInMonth) : daysInMonth;
+
+            if (offset == 0 && today.Day < 10)
+                continue;
+
+            DateOnly Day(int d) => new(monthStart.Year, monthStart.Month, Math.Min(Math.Max(1, d), lastDay));
+            var month = Day(offset == 0 ? 1 : 1);
+
+            transactions.Add(new InvestmentTransaction
+            {
+                InvestmentAccountId = account.Id,
+                Type = InvestmentTransactionType.TransferIn,
+                Date = month,
+                Amount = 500,
+                Note = "Monthly contribution"
+            });
+
+            var vwceQty = 2;
+            transactions.Add(new InvestmentTransaction
+            {
+                InvestmentAccountId = account.Id,
+                AssetId = vwce.Id,
+                Type = InvestmentTransactionType.Buy,
+                Date = Day(3),
+                Quantity = vwceQty,
+                Price = vwcePrice,
+                Amount = decimal.Round(vwceQty * vwcePrice, 2),
+                Fee = 1.50m,
+                Note = "Monthly buy"
+            });
+
+            if (offset % 2 == 1)
+            {
+                transactions.Add(new InvestmentTransaction
+                {
+                    InvestmentAccountId = account.Id,
+                    AssetId = vusa.Id,
+                    Type = InvestmentTransactionType.Buy,
+                    Date = Day(8),
+                    Quantity = 1,
+                    Price = vusaPrice,
+                    Amount = vusaPrice,
+                    Fee = 1.50m,
+                    Note = "Accumulate"
+                });
+
+                transactions.Add(new InvestmentTransaction
+                {
+                    InvestmentAccountId = account.Id,
+                    AssetId = msft.Id,
+                    Type = InvestmentTransactionType.Buy,
+                    Date = Day(10),
+                    Quantity = 1,
+                    Price = msftPrice,
+                    Amount = msftPrice,
+                    Fee = 1.00m,
+                    Note = "Stock pick"
+                });
+            }
+
+            if (offset > 0 && offset % 3 == 0)
+            {
+                transactions.Add(new InvestmentTransaction
+                {
+                    InvestmentAccountId = account.Id,
+                    AssetId = vwce.Id,
+                    Type = InvestmentTransactionType.Dividend,
+                    Date = Day(20),
+                    Amount = 1.40m,
+                    Note = "Quarterly dividend VWCE"
+                });
+
+                transactions.Add(new InvestmentTransaction
+                {
+                    InvestmentAccountId = account.Id,
+                    AssetId = msft.Id,
+                    Type = InvestmentTransactionType.Dividend,
+                    Date = Day(22),
+                    Amount = 7.50m,
+                    Note = "Quarterly dividend MSFT"
+                });
+            }
+
+            if (offset == 2)
+            {
+                transactions.Add(new InvestmentTransaction
+                {
+                    InvestmentAccountId = account.Id,
+                    AssetId = vwce.Id,
+                    Type = InvestmentTransactionType.Sell,
+                    Date = Day(12),
+                    Quantity = 1,
+                    Price = 128m,
+                    Amount = 128m,
+                    Fee = 1.50m,
+                    Note = "Reallocated some VWCE"
+                });
+            }
+
+            if (offset > 0)
+            {
+                var priceDay = Day(15);
+
+                prices.Add(new PriceHistory { AssetId = vwce.Id, Date = priceDay, Price = vwcePrice });
+                prices.Add(new PriceHistory { AssetId = vusa.Id, Date = priceDay, Price = vusaPrice });
+                prices.Add(new PriceHistory { AssetId = msft.Id, Date = priceDay, Price = msftPrice });
+            }
+
+            vwcePrice += random.Next(-3, 6);
+            vusaPrice += random.Next(-12, 18);
+            msftPrice += random.Next(-8, 14);
+        }
+
+        _context.InvestmentTransactions.AddRange(transactions);
+        _context.PriceHistory.AddRange(prices);
         await _context.SaveChangesAsync();
     }
 

@@ -16,6 +16,14 @@ public class FinanceDbContext : DbContext
 
     public DbSet<CashTransaction> CashTransactions => Set<CashTransaction>();
 
+    public DbSet<Asset> Assets => Set<Asset>();
+
+    public DbSet<InvestmentAccount> InvestmentAccounts => Set<InvestmentAccount>();
+
+    public DbSet<InvestmentTransaction> InvestmentTransactions => Set<InvestmentTransaction>();
+
+    public DbSet<PriceHistory> PriceHistory => Set<PriceHistory>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -29,5 +37,26 @@ public class FinanceDbContext : DbContext
             .HasMany(c => c.CashTransactions)
             .WithOne(t => t.Category)
             .HasForeignKey(t => t.CategoryId);
+
+        modelBuilder.Entity<Asset>()
+            .HasIndex(a => a.Ticker)
+            .IsUnique();
+
+        modelBuilder.Entity<PriceHistory>()
+            .HasOne(p => p.Asset)
+            .WithMany()
+            .HasForeignKey(p => p.AssetId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InvestmentAccount>()
+            .HasMany<InvestmentTransaction>()
+            .WithOne(t => t.InvestmentAccount)
+            .HasForeignKey(t => t.InvestmentAccountId);
+
+        modelBuilder.Entity<Asset>()
+            .HasMany<InvestmentTransaction>()
+            .WithOne(t => t.Asset)
+            .HasForeignKey(t => t.AssetId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

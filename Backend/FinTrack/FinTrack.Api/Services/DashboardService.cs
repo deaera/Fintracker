@@ -9,13 +9,16 @@ public class DashboardService
 {
     private readonly FinanceDbContext _context;
     private readonly BalanceService _balanceService;
+    private readonly InvestmentPortfolioService _portfolioService;
 
     public DashboardService(
         FinanceDbContext context,
-        BalanceService balanceService)
+        BalanceService balanceService,
+        InvestmentPortfolioService portfolioService)
     {
         _context = context;
         _balanceService = balanceService;
+        _portfolioService = portfolioService;
     }
 
     public async Task<DashboardResponse> GetDashboardAsync(int? month = null, int? year = null)
@@ -71,11 +74,15 @@ public class DashboardService
 
         var totalBalance = await _balanceService.GetTotalCashAsync();
 
+        var investmentValue = await _portfolioService.GetCurrentTotalValueAsync();
+
         var monthlyTrend = await GetMonthlyTrendAsync(today, month, year);
 
         return new DashboardResponse
         {
             TotalBalance = totalBalance,
+            InvestmentValue = investmentValue,
+            NetWorth = totalBalance + investmentValue,
             Income = income,
             Expenses = expenses,
             Savings = savings,

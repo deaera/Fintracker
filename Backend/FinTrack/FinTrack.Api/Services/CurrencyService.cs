@@ -23,7 +23,9 @@ public class CurrencyService
     {
         ["EUR"] = 1m,
         ["USD"] = 1.08m,
-        ["RON"] = 4.98m
+        ["RON"] = 4.98m,
+        ["GBP"] = 1.14m,
+        ["CHF"] = 1.20m
     };
 
     public async Task<CurrencyRatesResponse> GetRatesAsync()
@@ -41,19 +43,17 @@ public class CurrencyService
         {
             var payload = await Http.GetFromJsonAsync<OpenErResponse>("EUR");
 
-            if (payload?.Rates is { Count: > 0 } &&
-                payload.Rates.TryGetValue("USD", out var usd) &&
-                payload.Rates.TryGetValue("RON", out var ron))
+            if (payload?.Rates is { Count: > 0 })
             {
+                foreach (var fallback in FallbackRates)
+                {
+                    payload.Rates.TryAdd(fallback.Key, fallback.Value);
+                }
+
                 var response = new CurrencyRatesResponse
                 {
                     Base = "EUR",
-                    Rates = new Dictionary<string, decimal>
-                    {
-                        ["EUR"] = 1m,
-                        ["USD"] = usd,
-                        ["RON"] = ron
-                    },
+                    Rates = payload.Rates,
                     UpdatedAt = DateTimeOffset.UtcNow,
                     Source = "live"
                 };
@@ -80,6 +80,29 @@ public class CurrencyService
             Source = "fallback"
         };
     }
+
+    /// <summary>Converts an amount from one currency to another. Missing currencies are treated as 1:1.</summary>
+    public async Task<decimal> ConvertAsync(decimal amount, string from, string to)
+    {
+        if (amount == 0 || from == to)
+            return amount;
+
+        var rates = await GetRatesAsync();
+        return Convert(amount, from, to, rates.Rates);
+    }
+
+    public decimal ConvertToBase(decimal amount, string from, Dictionary<string, decimal> rates)
+        => Convert(amount, from, "EUR", rates);
+
+    private static decimal Convert(decimal amount, string from, string to, Dictionary<string, decimal> rates)
+    {
+        var fromRate = rates.TryGetValue(ConvertCode(from), out var f) ? f : 1m;
+        var toRate = rates.TryGetValue(ConvertCode(to), out var t) ? t : 1m;
+
+        return amount * toRate / fromRate;
+    }
+
+    private static string ConvertCode(string code) => code.ToUpperInvariant();
 
     private sealed class OpenErResponse
     {

@@ -17,6 +17,8 @@ import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import PayrollIcon from "@mui/icons-material/Payments";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SavingsIcon from "@mui/icons-material/Savings";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import CategoryPie from "../components/CategoryPie";
 import MonthlyTrendChart from "../components/MonthlyTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
@@ -117,7 +119,7 @@ export default function DashboardPage() {
       </Box>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
           <StatCard
             title="Total balance"
             value={formatCurrency(convert(data.totalBalance), currency)}
@@ -127,7 +129,24 @@ export default function DashboardPage() {
               .join("  ·  ")}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <StatCard
+            title="Investments"
+            value={formatCurrency(convert(data.investmentValue), currency)}
+            icon={<TrendingUpIcon />}
+            sub={`${data.investmentValue > 0 ? "Portfolio value" : "No holdings yet"}`}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+          <StatCard
+            title="Net worth"
+            value={formatCurrency(convert(data.netWorth), currency)}
+            color="primary.main"
+            icon={<AccountBalanceIcon />}
+            sub="Cash + investments"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
           <StatCard
             title="Income"
             value={formatCurrency(convert(data.income), currency)}
@@ -135,7 +154,7 @@ export default function DashboardPage() {
             icon={<PayrollIcon />}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
           <StatCard
             title="Expenses"
             value={formatCurrency(convert(data.expenses), currency)}
@@ -143,7 +162,7 @@ export default function DashboardPage() {
             sub={`${expensesPie.length} categories`}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
           <StatCard
             title="Savings"
             value={formatCurrency(convert(data.savings), currency)}

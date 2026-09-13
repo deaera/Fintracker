@@ -21,6 +21,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import InsightsIcon from "@mui/icons-material/Insights";
 import SettingsIcon from "@mui/icons-material/Settings";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { DISPLAY_CURRENCIES, useSettings } from "../context/settings";
 
 const DRAWER_WIDTH = 240;
@@ -28,6 +29,7 @@ const DRAWER_WIDTH = 240;
 const NAV_ITEMS = [
   { label: "Dashboard", path: "/", icon: <DashboardIcon /> },
   { label: "Transactions", path: "/transactions", icon: <ReceiptLongIcon /> },
+  { label: "Investments", path: "/investments", icon: <TrendingUpIcon /> },
   { label: "Analytics", path: "/analytics", icon: <InsightsIcon /> },
   { label: "Settings", path: "/settings", icon: <SettingsIcon /> },
 ];
