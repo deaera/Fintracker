@@ -29,6 +29,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { getAccounts, createAccount, updateAccount } from "../services/accountService";
 import { getCategories, createCategory, updateCategory, deleteCategory } from "../services/categoryService";
 import type { Account, Category, CreateCategoryInput, UpdateAccountInput } from "../types";
@@ -261,6 +262,7 @@ export default function SettingsPage() {
   const accountsState = useApiData<Account[]>(getAccounts, "settings-accounts");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [deleteCategoryTarget, setDeleteCategoryTarget] = useState<Category | null>(null);
   const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -279,18 +281,18 @@ export default function SettingsPage() {
     setEditingCategory(null);
   };
 
-  const handleCategoryDelete = async (category: Category) => {
-    const confirmed = window.confirm(
-      `Delete "${category.name}"? Transactions using it will also be removed.`,
-    );
-    if (!confirmed) return;
+  const handleCategoryDelete = (category: Category) => setDeleteCategoryTarget(category);
+
+  const confirmCategoryDelete = async () => {
+    if (!deleteCategoryTarget) return;
     try {
-      await deleteCategory(category.id);
+      await deleteCategory(deleteCategoryTarget.id);
       toast.success("Category deleted");
       await categoriesState.reload();
     } catch {
       toast.error("Could not delete category.");
     }
+    setDeleteCategoryTarget(null);
   };
 
   const handleAccountSave = async (input: UpdateAccountInput) => {
@@ -497,6 +499,14 @@ export default function SettingsPage() {
         }}
         initial={editingAccount}
         onSave={handleAccountSave}
+      />
+
+      <ConfirmDialog
+        open={deleteCategoryTarget != null}
+        title="Delete category"
+        message={`Delete "${deleteCategoryTarget?.name}"? Transactions using it will also be removed.`}
+        onClose={() => setDeleteCategoryTarget(null)}
+        onConfirm={confirmCategoryDelete}
       />
     </Stack>
   );

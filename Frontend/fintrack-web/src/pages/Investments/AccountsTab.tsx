@@ -48,6 +48,7 @@ import InvestmentAccountDialog from "./InvestmentAccountDialog";
 import { ASSET_TYPE_LABELS, INVESTMENT_TYPE_LABELS } from "../../utils/investmentLabels";
 import { InvestmentAssetDialog } from "./InvestmentAssetDialog";
 import type { XtbImportParseResponse } from "../../types";
+import ConfirmDialog from "../../components/ConfirmDialog";
 
 export default function AccountsTab() {
   const { currency, convert } = useSettings();
@@ -70,6 +71,9 @@ export default function AccountsTab() {
   const [preview, setPreview] = useState<XtbImportParseResponse | null>(null);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [deleteAccountTarget, setDeleteAccountTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteAssetTarget, setDeleteAssetTarget] = useState<InvestmentAsset | null>(null);
+  const [confirmCommit, setConfirmCommit] = useState(false);
 
   const accounts = useMemo(() => accountsState.data ?? [], [accountsState.data]);
   const assets = useMemo(() => assetsState.data ?? [], [assetsState.data]);
@@ -82,26 +86,33 @@ export default function AccountsTab() {
     );
   }
 
-  const handleDeleteAccount = async (id: string, name: string) => {
-    if (!window.confirm(`Delete account "${name}" and all of its transactions?`)) return;
+  const handleDeleteAccount = (id: string, name: string) =>
+    setDeleteAccountTarget({ id, name });
+
+  const confirmDeleteAccount = async () => {
+    if (!deleteAccountTarget) return;
     try {
-      await deleteInvestmentAccount(id);
+      await deleteInvestmentAccount(deleteAccountTarget.id);
       toast.success("Account deleted");
       await accountsState.reload();
     } catch {
       toast.error("Could not delete account. It may have transactions.");
     }
+    setDeleteAccountTarget(null);
   };
 
-  const handleDeleteAsset = async (a: InvestmentAsset) => {
-    if (!window.confirm(`Delete asset "${a.ticker}"?`)) return;
+  const handleDeleteAsset = (a: InvestmentAsset) => setDeleteAssetTarget(a);
+
+  const confirmDeleteAsset = async () => {
+    if (!deleteAssetTarget) return;
     try {
-      await deleteInvestmentAsset(a.id);
+      await deleteInvestmentAsset(deleteAssetTarget.id);
       toast.success("Asset deleted");
       await assetsState.reload();
     } catch {
       toast.error("Could not delete asset. It may be used by transactions.");
     }
+    setDeleteAssetTarget(null);
   };
 
   const handleSavePrice = async () => {
@@ -172,12 +183,14 @@ export default function AccountsTab() {
     }
   };
 
-  const handleCommit = async () => {
+  const handleCommit = () => {
     if (!preview) return;
-    const confirmed = window.confirm(
-      `Import ${preview.supportedCount} transactions into "${importAccountName}"?\n\nExisting transactions are kept — anything already in the account is skipped.`,
-    );
-    if (!confirmed) return;
+    setConfirmCommit(true);
+  };
+
+  const confirmCommitImport = async () => {
+    if (!preview) return;
+    setConfirmCommit(false);
     setImporting(true);
     try {
       const result = await commitXtbImport({
@@ -665,6 +678,36 @@ export default function AccountsTab() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteAccountTarget != null}
+        title="Delete broker account"
+        message={`Delete account "${deleteAccountTarget?.name}" and all of its transactions?`}
+        onClose={() => setDeleteAccountTarget(null)}
+        onConfirm={confirmDeleteAccount}
+      />
+
+      <ConfirmDialog
+        open={deleteAssetTarget != null}
+        title="Delete asset"
+        message={`Delete asset "${deleteAssetTarget?.ticker}"?`}
+        onClose={() => setDeleteAssetTarget(null)}
+        onConfirm={confirmDeleteAsset}
+      />
+
+      <ConfirmDialog
+        open={confirmCommit}
+        title="Confirm import"
+        message={
+          preview
+            ? `Import ${preview.supportedCount} transactions into "${importAccountName}"? Existing transactions are kept — anything already in the account is skipped.`
+            : ""
+        }
+        confirmLabel="Import"
+        tone="primary"
+        onClose={() => setConfirmCommit(false)}
+        onConfirm={confirmCommitImport}
+      />
     </Stack>
   );
 }

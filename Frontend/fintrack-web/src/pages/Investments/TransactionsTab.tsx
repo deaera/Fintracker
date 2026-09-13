@@ -25,6 +25,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
 import { usePagination } from "../../hooks/usePagination";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import {
   deleteInvestmentTransaction,
   getInvestmentAccounts,
@@ -53,6 +54,7 @@ export default function TransactionsTab() {
   const [typeFilter, setTypeFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<InvestmentTransaction | null>(null);
 
   const transactionsState = useApiData(() => getInvestmentTransactions({
     account: accountFilter || undefined,
@@ -75,15 +77,18 @@ export default function TransactionsTab() {
     );
   }
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this transaction?")) return;
+  const handleDelete = (t: InvestmentTransaction) => setDeleteTarget(t);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteInvestmentTransaction(id);
+      await deleteInvestmentTransaction(deleteTarget.id);
       toast.success("Transaction deleted");
       await transactionsState.reload();
     } catch {
       toast.error("Could not delete transaction.");
     }
+    setDeleteTarget(null);
   };
 
   return (
@@ -194,7 +199,7 @@ export default function TransactionsTab() {
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => handleDelete(t.id)}
+                      onClick={() => handleDelete(t)}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -226,6 +231,18 @@ export default function TransactionsTab() {
         onSaved={async () => {
           await transactionsState.reload();
         }}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title="Delete transaction"
+        message={
+          deleteTarget
+            ? `Delete "${INVESTMENT_TYPE_LABELS[deleteTarget.type]}" ${deleteTarget.ticker ? `of ${deleteTarget.ticker}` : ""} on ${formatDate(deleteTarget.date)}?`
+            : ""
+        }
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
       />
     </Stack>
   );

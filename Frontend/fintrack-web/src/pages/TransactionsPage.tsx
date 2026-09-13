@@ -27,6 +27,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import TransactionFormDialog from "../components/TransactionFormDialog";
 import TransferDialog from "../components/TransferDialog";
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
 import { usePagination } from "../hooks/usePagination";
@@ -64,6 +65,7 @@ export default function TransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CashTransaction | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<CashTransaction | null>(null);
 
   const transactions = useMemo(() => transactionsState.data ?? [], [transactionsState.data]);
   const accounts = useMemo(() => accountsState.data ?? [], [accountsState.data]);
@@ -113,20 +115,18 @@ export default function TransactionsPage() {
     await transactionsState.reload();
   };
 
-  const handleDelete = async (t: CashTransaction) => {
-    const confirmed = window.confirm(
-      t.isTransfer
-        ? `Delete the transfer "${t.description || "Transfer"}"? Both sides of the transfer will be removed.`
-        : `Delete "${t.description || t.categoryName}" for ${formatCurrency(convert(convertFrom(t.amount, t.currency)), currency)}?`,
-    );
-    if (!confirmed) return;
+  const handleDelete = (t: CashTransaction) => setDeleteTarget(t);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
     try {
-      await deleteTransaction(t.id);
-      toast.success(t.isTransfer ? "Transfer deleted" : "Transaction deleted");
+      await deleteTransaction(deleteTarget.id);
+      toast.success(deleteTarget.isTransfer ? "Transfer deleted" : "Transaction deleted");
       await transactionsState.reload();
     } catch {
       toast.error("Could not delete transaction.");
     }
+    setDeleteTarget(null);
   };
 
   const handleTransfer = async (input: CreateTransferInput) => {
@@ -335,6 +335,18 @@ export default function TransactionsPage() {
         onClose={() => setTransferDialogOpen(false)}
         accounts={accounts}
         onSubmit={handleTransfer}
+      />
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        title={deleteTarget?.isTransfer ? "Delete transfer" : "Delete transaction"}
+        message={
+          deleteTarget?.isTransfer
+            ? `Delete the transfer "${deleteTarget.description || "Transfer"}"? Both sides of the transfer will be removed.`
+            : `Delete "${deleteTarget?.description || deleteTarget?.categoryName}" for ${formatCurrency(convert(convertFrom(deleteTarget?.amount ?? 0, deleteTarget?.currency ?? "EUR")), currency)}?`
+        }
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
       />
     </Stack>
   );
