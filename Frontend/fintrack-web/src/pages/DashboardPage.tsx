@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Card,
   CardContent,
-  CircularProgress,
   Divider,
   Grid,
   List,
@@ -20,9 +19,11 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import SavingsIcon from "@mui/icons-material/Savings";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CategoryPie from "../components/CategoryPie";
 import MonthlyTrendChart from "../components/MonthlyTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useSettings, DISPLAY_CURRENCIES } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
 import { getDashboard } from "../services/dashboardService";
@@ -36,10 +37,12 @@ interface StatCardProps {
   icon: React.ReactNode;
   color?: string;
   sub?: string;
+  to?: string;
 }
 
-function StatCard({ title, value, icon, color, sub }: StatCardProps) {
+function StatCard({ title, value, icon, color, sub, to }: StatCardProps) {
   const theme = useTheme();
+  const navigate = useNavigate();
   const accent =
     color === "success.main"
       ? theme.palette.success.main
@@ -50,21 +53,42 @@ function StatCard({ title, value, icon, color, sub }: StatCardProps) {
           : theme.palette.action.active;
 
   return (
-    <Card sx={{ height: "100%" }}>
+    <Card
+      sx={{
+        height: "100%",
+        cursor: to ? "pointer" : "default",
+        transition: "transform 140ms ease, box-shadow 140ms ease",
+        ...(to
+          ? {
+              "&:hover": {
+                transform: "translateY(-3px)",
+                boxShadow: theme.shadows[5],
+                borderColor: "primary.main",
+              },
+            }
+          : {}),
+      }}
+      onClick={to ? () => navigate(to) : undefined}
+    >
       <CardContent sx={{ p: 2.5, height: "100%" }}>
         <Stack spacing={1.5}>
-          <Box
-            sx={{
-              width: 40,
-              height: 40,
-              borderRadius: 2,
-              display: "grid",
-              placeItems: "center",
-              bgcolor: alpha(accent, 0.12),
-              color: accent,
-            }}
-          >
-            {icon}
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: alpha(accent, 0.12),
+                color: accent,
+              }}
+            >
+              {icon}
+            </Box>
+            {to && (
+              <ArrowForwardIosIcon sx={{ fontSize: 14, color: "text.disabled", mt: 0.5 }} />
+            )}
           </Box>
           <Box>
             <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -97,16 +121,12 @@ export default function DashboardPage() {
   );
 
   if (loading || !data) {
-    return (
+    return error ? (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        {error ? (
-          <Typography color="text.secondary">
-            Could not load dashboard data.
-          </Typography>
-        ) : (
-          <CircularProgress />
-        )}
+        <Typography color="text.secondary">Could not load dashboard data.</Typography>
       </Box>
+    ) : (
+      <LoadingSkeleton />
     );
   }
 
@@ -160,6 +180,7 @@ export default function DashboardPage() {
             value={formatCurrency(convert(data.investmentValue), currency)}
             icon={<TrendingUpIcon />}
             sub={`${data.investmentValue > 0 ? "Portfolio value" : "No holdings yet"}`}
+            to="/investments"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 2 }}>
@@ -177,6 +198,7 @@ export default function DashboardPage() {
             value={formatCurrency(convert(data.income), currency)}
             color="success.main"
             icon={<PayrollIcon />}
+            to="/transactions"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 2 }}>
@@ -185,6 +207,7 @@ export default function DashboardPage() {
             value={formatCurrency(convert(data.expenses), currency)}
             icon={<ReceiptLongIcon />}
             sub={`${expensesPie.length} categories`}
+            to="/transactions"
           />
         </Grid>
         <Grid size={{ xs: 12, sm: 6, md: 2 }}>
@@ -193,6 +216,7 @@ export default function DashboardPage() {
             value={formatCurrency(convert(data.savings), currency)}
             icon={<SavingsIcon />}
             sub={`${data.savingsRate.toFixed(1)}% savings rate`}
+            to="/transactions"
           />
         </Grid>
       </Grid>

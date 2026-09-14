@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   Chip,
-  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -32,6 +31,7 @@ import PriceChangeIcon from "@mui/icons-material/PriceChange";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import {
   addManualPrice,
   commitXtbImport,
@@ -79,11 +79,7 @@ export default function AccountsTab() {
   const assets = useMemo(() => assetsState.data ?? [], [assetsState.data]);
 
   if (accountsState.loading || assetsState.loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSkeleton />;
   }
 
   const handleDeleteAccount = (id: string, name: string) =>

@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Chip,
-  CircularProgress,
   IconButton,
   InputAdornment,
   MenuItem,
@@ -28,6 +27,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import TransactionFormDialog from "../components/TransactionFormDialog";
 import TransferDialog from "../components/TransferDialog";
 import ConfirmDialog from "../components/ConfirmDialog";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
 import { usePagination } from "../hooks/usePagination";
@@ -136,11 +136,7 @@ export default function TransactionsPage() {
   };
 
   if (transactionsState.loading || accountsState.loading || categoriesState.loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (transactionsState.error || accountsState.error || categoriesState.error) {

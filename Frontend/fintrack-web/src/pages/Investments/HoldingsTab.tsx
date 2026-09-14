@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Chip,
-  CircularProgress,
   Stack,
   Table,
   TableBody,
@@ -19,6 +18,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import AddIcon from "@mui/icons-material/Add";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import {
   getInvestmentAccounts,
   getInvestmentAssets,
@@ -40,11 +40,7 @@ export default function HoldingsTab() {
   const holdings = useMemo(() => holdingsState.data ?? [], [holdingsState.data]);
 
   if (holdingsState.loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSkeleton />;
   }
 
   const handleRefresh = async () => {

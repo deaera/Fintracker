@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Box,
   Button,
   Card,
   CardContent,
-  CircularProgress,
   Grid,
   MenuItem,
   Stack,
@@ -32,6 +31,7 @@ import dayjs from "dayjs";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
 import { usePagination } from "../../hooks/usePagination";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import {
   downloadInvestmentCsv,
   getInvestmentDividends,
@@ -44,17 +44,16 @@ export default function DividendsTab() {
   const { currency, convert, convertTo } = useSettings();
   const [year, setYear] = useState(dayjs().year());
   const state = useApiData(() => getInvestmentDividends(year), `div:${year}`);
-  const { slice: pageRows, paginationProps, count } = usePagination(state.data?.payments ?? []);
+  const payments = useMemo(() => state.data?.payments ?? [], [state.data]);
+  const { slice: pageRows, paginationProps, count } = usePagination(payments);
 
   if (state.loading || !state.data) {
-    return (
+    return state.error ? (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        {state.error ? (
-          <Typography color="text.secondary">Could not load dividends.</Typography>
-        ) : (
-          <CircularProgress />
-        )}
+        <Typography color="text.secondary">Could not load dividends.</Typography>
       </Box>
+    ) : (
+      <LoadingSkeleton />
     );
   }
 

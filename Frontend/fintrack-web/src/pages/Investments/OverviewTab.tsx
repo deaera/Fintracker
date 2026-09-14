@@ -29,6 +29,7 @@ import {
 import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import {
   getInvestmentAllocation,
   getInvestmentBenchmark,
@@ -93,14 +94,12 @@ export default function OverviewTab() {
   );
 
   if (overview.loading || !overview.data) {
-    return (
+    return overview.error ? (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        {overview.error ? (
-          <Typography color="text.secondary">Could not load portfolio overview.</Typography>
-        ) : (
-          <CircularProgress />
-        )}
+        <Typography color="text.secondary">Could not load portfolio overview.</Typography>
       </Box>
+    ) : (
+      <LoadingSkeleton />
     );
   }
 

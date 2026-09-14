@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
-  Box,
   Button,
   Card,
   Chip,
-  CircularProgress,
   IconButton,
   MenuItem,
   Stack,
@@ -26,6 +24,7 @@ import { useSettings } from "../../context/settings";
 import { useApiData } from "../../hooks/useApiData";
 import { usePagination } from "../../hooks/usePagination";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import LoadingSkeleton from "../../components/LoadingSkeleton";
 import {
   deleteInvestmentTransaction,
   getInvestmentAccounts,
@@ -70,11 +69,7 @@ export default function TransactionsTab() {
   const { slice: pageRows, paginationProps, count } = usePagination(transactions);
 
   if (transactionsState.loading || accountsState.loading || assetsState.loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <LoadingSkeleton />;
   }
 
   const handleDelete = (t: InvestmentTransaction) => setDeleteTarget(t);

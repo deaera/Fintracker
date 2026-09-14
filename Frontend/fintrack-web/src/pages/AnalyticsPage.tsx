@@ -3,7 +3,6 @@ import {
   Box,
   Card,
   CardContent,
-  CircularProgress,
   Grid,
   LinearProgress,
   Stack,
@@ -14,6 +13,7 @@ import MonthlyTrendChart from "../components/MonthlyTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 import { getAnalytics } from "../services/analyticsService";
 import type { Period } from "../types";
 import { formatCurrency, monthLabel, monthName } from "../utils/format";
@@ -47,16 +47,12 @@ export default function AnalyticsPage() {
   );
 
   if (loading || !data) {
-    return (
+    return error ? (
       <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
-        {error ? (
-          <Typography color="text.secondary">
-            Could not load analytics data.
-          </Typography>
-        ) : (
-          <CircularProgress />
-        )}
+        <Typography color="text.secondary">Could not load analytics data.</Typography>
       </Box>
+    ) : (
+      <LoadingSkeleton />
     );
   }
 

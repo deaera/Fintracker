@@ -20,27 +20,46 @@ export default function CategoryPie({ data, currency }: Props) {
     );
   }
 
+  const total = data.reduce((sum, d) => sum + convert(d.amount), 0);
+
   return (
-    <ResponsiveContainer width="100%" height={280}>
-      <PieChart>
-        <Pie
-          data={data.map((d) => ({ ...d, amount: convert(d.amount) }))}
-          dataKey="amount"
-          nameKey="category"
-          innerRadius={55}
-          outerRadius={95}
-          paddingAngle={2}
-          strokeWidth={1}
-        >
-          {data.map((entry) => (
-            <Cell key={entry.category} fill={entry.color} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value) => formatCurrency(Number(value), currency)}
-        />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+    <Box sx={{ position: "relative", width: "100%", height: 280 }}>
+      <ResponsiveContainer width="100%" height={280}>
+        <PieChart>
+          <Pie
+            data={data.map((d) => ({ ...d, amount: convert(d.amount) }))}
+            dataKey="amount"
+            nameKey="category"
+            innerRadius={55}
+            outerRadius={95}
+            paddingAngle={2}
+            strokeWidth={1}
+          >
+            {data.map((entry) => (
+              <Cell key={entry.category} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip formatter={(value) => formatCurrency(Number(value), currency)} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "47%",
+          left: "50%",
+          transform: "translate(-50%, -55%)",
+          textAlign: "center",
+          pointerEvents: "none",
+        }}
+      >
+        <Typography variant="h6" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
+          {formatCurrency(total, currency)}
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Total spend
+        </Typography>
+      </Box>
+    </Box>
   );
 }
