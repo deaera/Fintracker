@@ -38,4 +38,23 @@ public class CashTransaction
     /// Transfers always affect the balance.
     /// </summary>
     public bool AffectsBalance { get; set; } = true;
+
+    /// <summary>
+    /// For credit card payment transactions (category marked as card payment):
+    /// the credit card account that receives this payment.
+    /// </summary>
+    public Guid? CardPaymentAccountId { get; set; }
+
+    /// <summary>
+    /// For credit card payments: true when this payment also counts as one installment
+    /// of the card's installment plan, reducing the number of remaining payments.
+    /// </summary>
+    public bool IsInstallmentPayment { get; set; }
+
+    /// <summary>
+    /// For credit card payments: when true the card's outstanding/available/remaining
+    /// are updated on save. Untick to record a past payment without touching the card's
+    /// current values.
+    /// </summary>
+    public bool AffectsCard { get; set; } = true;
 }

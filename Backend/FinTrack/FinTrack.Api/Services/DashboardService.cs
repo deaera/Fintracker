@@ -85,21 +85,64 @@ public class DashboardService
 
         var investmentValue = await _portfolioService.GetCurrentTotalValueAsync();
 
+        var creditCards = await GetCreditCardsAsync(today, rates);
+
+        var creditDebt = creditCards.Sum(c => c.DebtInEur);
+
         var monthlyTrend = await GetMonthlyTrendAsync(today, month, year);
 
         return new DashboardResponse
         {
             TotalBalance = totalBalance,
             InvestmentValue = investmentValue,
-            NetWorth = totalBalance + investmentValue,
+            CreditDebt = creditDebt,
+            NetWorth = totalBalance + investmentValue - creditDebt,
             Income = income,
             Expenses = expenses,
             Savings = savings,
             SavingsRate = savingsRate,
             ExpensesByCategory = expensesByCategory,
             RecentTransactions = recentTransactions,
-            MonthlyTrend = monthlyTrend
+            MonthlyTrend = monthlyTrend,
+            CreditCards = creditCards
         };
+    }
+
+    private async Task<List<CreditCardInfoResponse>> GetCreditCardsAsync(
+        DateOnly today,
+        Dictionary<string, decimal> rates)
+    {
+        var cards = await _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.Type == AccountType.CreditCard)
+            .ToListAsync();
+
+        return cards.Select(card =>
+        {
+            var outstanding = card.OutstandingBalance ?? 0;
+            var limit = card.CreditLimit ?? 0;
+
+            var remaining = card.RemainingPayments
+                ?? (card.InstallmentMonths is int total
+                    ? Math.Max(0, total - BalanceService.MonthsElapsed(card.InstallmentStartDate, today))
+                    : (int?)null);
+
+            return new CreditCardInfoResponse
+            {
+                Id = card.Id,
+                Name = card.Name,
+                Currency = card.Currency,
+                CreditLimit = limit,
+                OutstandingBalance = outstanding,
+                AvailableCredit = card.AvailableCredit ?? Math.Max(0, limit - outstanding),
+                MonthlyPayment = card.MonthlyPayment,
+                InstallmentMonths = card.InstallmentMonths,
+                RemainingPayments = remaining,
+                MonthlyInterestRate = card.MonthlyInterestRate,
+                AnnualFee = card.AnnualFee,
+                DebtInEur = outstanding > 0 ? _currency.ConvertToBase(outstanding, card.Currency, rates) : 0
+            };
+        }).ToList();
     }
 
     private async Task<List<CashTransaction>> GetPeriodTransactionsAsync(

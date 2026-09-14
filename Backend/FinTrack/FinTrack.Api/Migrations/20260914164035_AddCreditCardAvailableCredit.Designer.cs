@@ -3,6 +3,7 @@ using System;
 using FinTrack.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinTrack.Api.Migrations
 {
     [DbContext(typeof(FinanceDbContext))]
-    partial class FinanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260914164035_AddCreditCardAvailableCredit")]
+    partial class AddCreditCardAvailableCredit
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -35,9 +38,6 @@ namespace FinTrack.Api.Migrations
                     b.Property<string>("Icon")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("IsCardPayment")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -103,9 +103,6 @@ namespace FinTrack.Api.Migrations
                     b.Property<decimal?>("OutstandingBalance")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
-
-                    b.Property<int?>("RemainingPayments")
-                        .HasColumnType("integer");
 
                     b.Property<decimal?>("TotalReturned")
                         .HasPrecision(18, 2)
@@ -175,15 +172,9 @@ namespace FinTrack.Api.Migrations
                     b.Property<bool>("AffectsBalance")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("AffectsCard")
-                        .HasColumnType("boolean");
-
                     b.Property<decimal>("Amount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid?>("CardPaymentAccountId")
-                        .HasColumnType("uuid");
 
                     b.Property<Guid>("CategoryId")
                         .HasColumnType("uuid");
@@ -199,9 +190,6 @@ namespace FinTrack.Api.Migrations
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<bool>("IsInstallmentPayment")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsOutgoingTransfer")
                         .HasColumnType("boolean");

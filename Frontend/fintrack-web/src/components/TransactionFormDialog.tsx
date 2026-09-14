@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import type { Account, CashTransaction, Category, CreateTransactionInput } from "../types";
-import { CategoryType } from "../types";
+import { AccountType, CategoryType } from "../types";
 
 const CURRENCIES = ["RON", "EUR", "USD", "GBP"];
 
@@ -55,11 +55,21 @@ export default function TransactionFormDialog({
     "EUR";
   const [currency, setCurrency] = useState(initialCurrency);
   const [affectsBalance, setAffectsBalance] = useState(initial?.affectsBalance ?? true);
+  const [cardPaymentAccountId, setCardPaymentAccountId] = useState(
+    initial?.cardPaymentAccountId ?? "",
+  );
+  const [isInstallmentPayment, setIsInstallmentPayment] = useState(
+    initial?.isInstallmentPayment ?? false,
+  );
+  const [affectsCard, setAffectsCard] = useState(initial?.affectsCard ?? true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const incomeCategories = categories.filter((c) => c.type === CategoryType.Income);
   const expenseCategories = categories.filter((c) => c.type === CategoryType.Expense);
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const isCardPayment = selectedCategory?.isCardPayment ?? false;
+  const cards = accounts.filter((a) => a.type === AccountType.CreditCard);
 
   const currencyOf = (id: string) => accounts.find((a) => a.id === id)?.currency ?? "EUR";
 
@@ -84,6 +94,10 @@ export default function TransactionFormDialog({
       setError("Please select a category and an account.");
       return;
     }
+    if (isCardPayment && !cardPaymentAccountId) {
+      setError("Choose the credit card you are paying.");
+      return;
+    }
 
     setSubmitting(true);
     setError("");
@@ -96,6 +110,9 @@ export default function TransactionFormDialog({
         categoryId,
         accountId,
         affectsBalance,
+        ...(isCardPayment
+          ? { cardPaymentAccountId, isInstallmentPayment, affectsCard }
+          : {}),
       });
       onClose();
     } catch {
@@ -200,6 +217,57 @@ export default function TransactionFormDialog({
         <Typography variant="body2" color="text.secondary">
           Untick to record the transaction without changing the balance.
         </Typography>
+
+        {isCardPayment && cards.length > 0 && (
+          <>
+            <TextField
+              select
+              label="Pay toward card"
+              value={cardPaymentAccountId}
+              onChange={(e) => setCardPaymentAccountId(e.target.value)}
+              fullWidth
+              helperText="This payment reduces the card's remaining debt."
+            >
+              {cards.map((c) => (
+                <MenuItem key={c.id} value={c.id}>
+                  {c.name} · owe {c.outstandingBalance ?? 0}
+                </MenuItem>
+              ))}
+            </TextField>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={isInstallmentPayment}
+                  onChange={(e) => setIsInstallmentPayment(e.target.checked)}
+                />
+              }
+              label="Counts as an installment"
+              sx={{
+                "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
+              }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              Tick to also reduce the card's remaining installments.
+            </Typography>
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={affectsCard}
+                  onChange={(e) => setAffectsCard(e.target.checked)}
+                />
+              }
+              label="Update credit card values"
+              sx={{
+                "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
+              }}
+            />
+            <Typography variant="body2" color="text.secondary">
+              Untick to record a past payment without changing the card's current values.
+            </Typography>
+          </>
+        )}
 
         {error && (
           <Typography variant="body2" color="error">

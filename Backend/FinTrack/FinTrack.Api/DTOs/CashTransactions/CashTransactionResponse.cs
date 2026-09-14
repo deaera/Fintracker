@@ -29,4 +29,10 @@ public class CashTransactionResponse
     public bool IsOutgoingTransfer { get; set; }
 
     public bool AffectsBalance { get; set; }
+
+    public Guid? CardPaymentAccountId { get; set; }
+
+    public bool IsInstallmentPayment { get; set; }
+
+    public bool AffectsCard { get; set; }
 }

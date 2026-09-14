@@ -8,10 +8,12 @@ namespace FinTrack.Api.Services;
 public class CashTransactionService
 {
     private readonly FinanceDbContext _context;
+    private readonly CurrencyService _currency;
 
-    public CashTransactionService(FinanceDbContext context)
+    public CashTransactionService(FinanceDbContext context, CurrencyService currency)
     {
         _context = context;
+        _currency = currency;
     }
 
     public async Task<List<CashTransactionResponse>> GetAllAsync(int? month = null, int? year = null)
@@ -50,7 +52,10 @@ public class CashTransactionService
                 CategoryType = t.Category.Type,
                 IsTransfer = t.TransferPairId != null,
                 IsOutgoingTransfer = t.IsOutgoingTransfer,
-                AffectsBalance = t.AffectsBalance
+                AffectsBalance = t.AffectsBalance,
+                CardPaymentAccountId = t.CardPaymentAccountId,
+                IsInstallmentPayment = t.IsInstallmentPayment,
+                AffectsCard = t.AffectsCard
             })
             .ToListAsync();
     }
@@ -78,7 +83,10 @@ public class CashTransactionService
                 CategoryType = t.Category.Type,
                 IsTransfer = t.TransferPairId != null,
                 IsOutgoingTransfer = t.IsOutgoingTransfer,
-                AffectsBalance = t.AffectsBalance
+                AffectsBalance = t.AffectsBalance,
+                CardPaymentAccountId = t.CardPaymentAccountId,
+                IsInstallmentPayment = t.IsInstallmentPayment,
+                AffectsCard = t.AffectsCard
             })
             .FirstOrDefaultAsync();
     }
@@ -106,10 +114,27 @@ public class CashTransactionService
             Description = request.Description,
             AccountId = request.AccountId,
             CategoryId = request.CategoryId,
-            AffectsBalance = request.AffectsBalance
+            AffectsBalance = request.AffectsBalance,
+            CardPaymentAccountId = request.CardPaymentAccountId,
+            IsInstallmentPayment = request.IsInstallmentPayment,
+            AffectsCard = request.AffectsCard
         };
 
         _context.CashTransactions.Add(transaction);
+
+        if (category.IsCardPayment && transaction.CardPaymentAccountId is Guid cardId)
+        {
+            if (cardId == transaction.AccountId)
+                throw new Exception("The payment account and the credit card must be different.");
+
+            if (transaction.AffectsCard)
+            {
+                var card = await GetCreditCardAsync(cardId);
+                await ApplyCardEffects(card, transaction);
+                if (transaction.IsInstallmentPayment)
+                    ShiftRemainingPayments(card, -1);
+            }
+        }
 
         await _context.SaveChangesAsync();
 
@@ -131,10 +156,28 @@ public class CashTransactionService
         if (!accountExists)
             throw new Exception("Account not found.");
 
-        var categoryExists = await _context.Categories.AnyAsync(c => c.Id == request.CategoryId);
+        var newCategory = await _context.Categories.FindAsync(request.CategoryId);
 
-        if (!categoryExists)
+        if (newCategory is null)
             throw new Exception("Category not found.");
+
+        var oldCategory = await _context.Categories.FindAsync(transaction.CategoryId);
+
+        var oldCardId = transaction.CardPaymentAccountId;
+        var oldIsInstallment = transaction.IsInstallmentPayment;
+        var oldAffectsCard = transaction.AffectsCard;
+        var oldAmount = transaction.Amount;
+        var oldCurrency = transaction.Currency;
+        var isTransfer = transaction.TransferPairId != null;
+
+        if (!isTransfer && oldCardId is Guid oldCard &&
+            oldCategory?.IsCardPayment == true && oldAffectsCard)
+        {
+            var card = await GetCreditCardAsync(oldCard);
+            ReverseCardEffects(card, oldAmount, oldCurrency);
+            if (oldIsInstallment)
+                ShiftRemainingPayments(card, 1);
+        }
 
         transaction.Date = request.Date;
         transaction.Amount = request.Amount;
@@ -142,10 +185,10 @@ public class CashTransactionService
         transaction.Description = request.Description;
         transaction.AffectsBalance = request.AffectsBalance;
 
-        if (transaction.TransferPairId is Guid pairId)
+        if (isTransfer)
         {
             var pair = await _context.CashTransactions
-                .Where(t => t.TransferPairId == pairId && t.Id != transaction.Id)
+                .Where(t => t.TransferPairId == transaction.TransferPairId && t.Id != transaction.Id)
                 .ToListAsync();
 
             foreach (var leg in pair)
@@ -160,6 +203,23 @@ public class CashTransactionService
         {
             transaction.AccountId = request.AccountId;
             transaction.CategoryId = request.CategoryId;
+            transaction.CardPaymentAccountId = request.CardPaymentAccountId;
+            transaction.IsInstallmentPayment = request.IsInstallmentPayment;
+            transaction.AffectsCard = request.AffectsCard;
+
+            if (newCategory.IsCardPayment && request.CardPaymentAccountId is Guid newCard)
+            {
+                if (newCard == transaction.AccountId)
+                    throw new Exception("The payment account and the credit card must be different.");
+
+                if (transaction.AffectsCard)
+                {
+                    var card = await GetCreditCardAsync(newCard);
+                    await ApplyCardEffects(card, transaction);
+                    if (transaction.IsInstallmentPayment)
+                        ShiftRemainingPayments(card, -1);
+                }
+            }
         }
 
         await _context.SaveChangesAsync();
@@ -173,6 +233,21 @@ public class CashTransactionService
 
         if (transaction is null)
             return false;
+
+        if (transaction.TransferPairId is null &&
+            transaction.AffectsCard &&
+            transaction.CardPaymentAccountId is Guid cardId)
+        {
+            var category = await _context.Categories.FindAsync(transaction.CategoryId);
+
+            if (category?.IsCardPayment == true)
+            {
+                var card = await GetCreditCardAsync(cardId);
+                await ReverseCardEffects(card, transaction.Amount, transaction.Currency);
+                if (transaction.IsInstallmentPayment)
+                    ShiftRemainingPayments(card, 1);
+            }
+        }
 
         if (transaction.TransferPairId is Guid pairId)
         {
@@ -190,6 +265,57 @@ public class CashTransactionService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    /// <summary>
+    /// A credit card payment reduces the card's outstanding debt: the still-payable
+    /// amount drops, available credit rises and the paid-back total grows.
+    /// </summary>
+    private async Task ApplyCardEffects(Account card, CashTransaction transaction)
+    {
+        var rates = (await _currency.GetRatesAsync()).Rates;
+        var amountInCardCurrency = _currency.ConvertTo(
+            transaction.Amount, transaction.Currency, card.Currency, rates);
+
+        var outstanding = Math.Max(0, (card.OutstandingBalance ?? 0) - amountInCardCurrency);
+        card.OutstandingBalance = outstanding;
+        card.AvailableCredit = Math.Max(0, (card.CreditLimit ?? 0) - outstanding);
+
+        if (card.TotalSpent is decimal spent)
+            card.TotalReturned = Math.Max(0, spent - outstanding);
+    }
+
+    /// <summary>Reverse of <see cref="ApplyCardEffects"/>: put the debt back on the card.</summary>
+    private async Task ReverseCardEffects(Account card, decimal amount, string currency)
+    {
+        var rates = (await _currency.GetRatesAsync()).Rates;
+        var amountInCardCurrency = _currency.ConvertTo(amount, currency, card.Currency, rates);
+
+        var outstanding = (card.OutstandingBalance ?? 0) + amountInCardCurrency;
+        card.OutstandingBalance = outstanding;
+        card.AvailableCredit = Math.Max(0, (card.CreditLimit ?? 0) - outstanding);
+
+        if (card.TotalSpent is decimal spent)
+            card.TotalReturned = Math.Max(0, spent - outstanding);
+    }
+
+    private void ShiftRemainingPayments(Account card, int delta)
+    {
+        if (card.RemainingPayments is int remaining)
+            card.RemainingPayments = Math.Max(0, remaining + delta);
+    }
+
+    private async Task<Account> GetCreditCardAsync(Guid id)
+    {
+        var card = await _context.Accounts.FirstOrDefaultAsync(a => a.Id == id);
+
+        if (card is null)
+            throw new Exception("Credit card account not found.");
+
+        if (card.Type != AccountType.CreditCard)
+            throw new Exception("The selected account is not a credit card.");
+
+        return card;
     }
 
     private static string? NormalizeCurrency(string currency)

@@ -25,7 +25,8 @@ public class CategoryService
                 Name = c.Name,
                 Type = c.Type,
                 Icon = c.Icon,
-                Color = c.Color
+                Color = c.Color,
+                IsCardPayment = c.IsCardPayment
             })
             .ToListAsync();
     }
@@ -37,7 +38,8 @@ public class CategoryService
             Name = request.Name,
             Type = request.Type,
             Icon = request.Icon,
-            Color = request.Color
+            Color = request.Color,
+            IsCardPayment = request.IsCardPayment
         };
 
         _context.Categories.Add(category);
@@ -50,7 +52,8 @@ public class CategoryService
             Name = category.Name,
             Type = category.Type,
             Icon = category.Icon,
-            Color = category.Color
+            Color = category.Color,
+            IsCardPayment = category.IsCardPayment
         };
     }
 
@@ -65,6 +68,7 @@ public class CategoryService
         category.Type = request.Type;
         category.Icon = request.Icon;
         category.Color = request.Color;
+        category.IsCardPayment = request.IsCardPayment;
 
         await _context.SaveChangesAsync();
 
@@ -74,7 +78,8 @@ public class CategoryService
             Name = category.Name,
             Type = category.Type,
             Icon = category.Icon,
-            Color = category.Color
+            Color = category.Color,
+            IsCardPayment = category.IsCardPayment
         };
     }
 
@@ -84,6 +89,9 @@ public class CategoryService
 
         if (category is null)
             return false;
+
+        if (category.IsCardPayment)
+            throw new Exception("The credit card payment category cannot be deleted.");
 
         _context.Categories.Remove(category);
 

@@ -6,6 +6,7 @@ import {
   CardContent,
   Divider,
   Grid,
+  LinearProgress,
   List,
   ListItem,
   ListItemText,
@@ -96,13 +97,23 @@ function StatCard({ title, value, icon, color, sub, to }: StatCardProps) {
             </Typography>
             <Typography
               variant="h5"
-              sx={{ fontWeight: 800, color: color ?? "text.primary", mt: 0.25 }}
+              sx={{
+                fontWeight: 800,
+                color: color ?? "text.primary",
+                mt: 0.25,
+                overflowWrap: "anywhere",
+                whiteSpace: "normal",
+              }}
             >
               {value}
             </Typography>
           </Box>
           {sub && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ overflowWrap: "anywhere" }}
+            >
               {sub}
             </Typography>
           )}
@@ -114,7 +125,10 @@ function StatCard({ title, value, icon, color, sub, to }: StatCardProps) {
 
 export default function DashboardPage() {
   const { currency, convert, convertFrom, convertTo } = useSettings();
-  const [period, setPeriod] = useState<Period>({ month: null, year: null });
+  const [period, setPeriod] = useState<Period>(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
+  });
   const { data, loading, error } = useApiData(
     () => getDashboard(period),
     `${period.year ?? "alltime"}:${period.month ?? "all"}`,
@@ -164,7 +178,7 @@ export default function DashboardPage() {
       </Box>
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Total balance"
             value={formatCurrency(convert(data.totalBalance), currency)}
@@ -174,7 +188,7 @@ export default function DashboardPage() {
               .join("  ·  ")}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Investments"
             value={formatCurrency(convert(data.investmentValue), currency)}
@@ -183,16 +197,20 @@ export default function DashboardPage() {
             to="/investments"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Net worth"
             value={formatCurrency(convert(data.netWorth), currency)}
             color="primary.main"
             icon={<AccountBalanceIcon />}
-            sub="Cash + investments"
+            sub={
+              data.creditDebt > 0
+                ? `Cash + investments − ${formatCurrency(convert(data.creditDebt), currency)} debt`
+                : "Cash + investments"
+            }
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Income"
             value={formatCurrency(convert(data.income), currency)}
@@ -201,7 +219,7 @@ export default function DashboardPage() {
             to="/transactions"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Expenses"
             value={formatCurrency(convert(data.expenses), currency)}
@@ -210,7 +228,7 @@ export default function DashboardPage() {
             to="/transactions"
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Savings"
             value={formatCurrency(convert(data.savings), currency)}
@@ -220,6 +238,105 @@ export default function DashboardPage() {
           />
         </Grid>
       </Grid>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Credit cards
+          </Typography>
+          {data.creditCards.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              No credit cards yet — add one from Settings.
+            </Typography>
+          ) : (
+            <Grid container spacing={2}>
+              {data.creditCards.map((card) => {
+                const usedPct =
+                  card.creditLimit > 0
+                    ? Math.min(100, (card.outstandingBalance / card.creditLimit) * 100)
+                    : 0;
+                return (
+                  <Grid key={card.id} size={{ xs: 12, md: 6 }}>
+                    <Box
+                      sx={{
+                        border: "1px solid",
+                        borderColor: "divider",
+                        borderRadius: 2,
+                        p: 2,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {card.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "text.secondary", fontWeight: 600 }}
+                        >
+                          avail {formatCurrency(card.availableCredit, card.currency)}
+                        </Typography>
+                      </Box>
+                      <LinearProgress
+                        variant="determinate"
+                        value={usedPct}
+                        color={usedPct > 80 ? "error" : usedPct > 50 ? "warning" : "primary"}
+                        sx={{ borderRadius: 1, height: 6 }}
+                      />
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          rowGap: 0.5,
+                        }}
+                      >
+                        <Typography variant="caption" color="text.secondary">
+                          Used {formatCurrency(card.outstandingBalance, card.currency)} of{" "}
+                          {formatCurrency(card.creditLimit, card.currency)}
+                        </Typography>
+                        <Typography variant="caption" color="error" sx={{ fontWeight: 600 }}>
+                          −{formatCurrency(convert(card.debtInEur), currency)} net worth
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Payment:{" "}
+                          <Box component="span" sx={{ fontWeight: 600, color: "text.primary" }}>
+                            {card.monthlyPayment != null
+                              ? `${formatCurrency(card.monthlyPayment, card.currency)}/mo`
+                              : "—"}
+                          </Box>
+                          {card.remainingPayments != null &&
+                            card.installmentMonths != null &&
+                            ` · ${card.remainingPayments} of ${card.installmentMonths} installments left`}
+                        </Typography>
+                        {(card.monthlyInterestRate != null || card.annualFee != null) && (
+                          <Typography variant="caption" color="text.secondary">
+                            {card.monthlyInterestRate != null &&
+                              `${card.monthlyInterestRate}% interest/mo`}
+                            {card.monthlyInterestRate != null && card.annualFee != null && " · "}
+                            {card.annualFee != null &&
+                              `${formatCurrency(card.annualFee, card.currency)} annual fee`}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </CardContent>
+      </Card>
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>

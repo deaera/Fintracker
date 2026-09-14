@@ -61,11 +61,23 @@ function StatCard({ title, value, color, sub }: StatCardProps) {
           <Typography variant="body2" color="text.secondary">
             {title}
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: color ?? "text.primary" }}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: color ?? "text.primary",
+              overflowWrap: "anywhere",
+              whiteSpace: "normal",
+            }}
+          >
             {value}
           </Typography>
           {sub && (
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ overflowWrap: "anywhere" }}
+            >
               {sub}
             </Typography>
           )}
@@ -126,19 +138,19 @@ export default function OverviewTab() {
   return (
     <Stack spacing={3}>
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Portfolio value"
             value={formatCurrency(convert(data.totalValue), currency)}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Invested"
             value={formatCurrency(convert(data.totalInvested), currency)}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="P&L"
             value={`${data.profitLoss >= 0 ? "+" : "−"}${formatCurrency(
@@ -149,7 +161,7 @@ export default function OverviewTab() {
             sub={`${data.profitLoss >= 0 ? "+" : ""}${profitPct}%`}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Realized gains"
             value={`${data.realizedGain >= 0 ? "+" : ""}${formatCurrency(
@@ -159,7 +171,7 @@ export default function OverviewTab() {
             color={data.realizedGain >= 0 ? "success.main" : "error.main"}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Unrealized gains"
             value={`${data.unrealizedGain >= 0 ? "+" : ""}${formatCurrency(
@@ -169,7 +181,7 @@ export default function OverviewTab() {
             color={data.unrealizedGain >= 0 ? "success.main" : "error.main"}
           />
         </Grid>
-        <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <StatCard
             title="Cash"
             value={formatCurrency(convert(data.cashBalance), currency)}

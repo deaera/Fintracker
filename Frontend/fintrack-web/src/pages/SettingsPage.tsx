@@ -164,6 +164,16 @@ function toDateInputValue(date: string): string {
   return date.slice(0, 10);
 }
 
+function numberOrNull(value: string): number | null {
+  const parsed = Number(value);
+  return !Number.isNaN(parsed) && value.trim() !== "" ? parsed : null;
+}
+
+function intOrNull(value: string): number | null {
+  const parsed = parseInt(value, 10);
+  return !Number.isNaN(parsed) ? parsed : null;
+}
+
 function AccountDialog({ open, onClose, initial, onSave }: AccountDialogProps) {
   const [name, setName] = useState(initial?.name ?? "");
   const [type, setType] = useState<AccountType>(initial?.type ?? AccountType.Checking);
@@ -174,8 +184,34 @@ function AccountDialog({ open, onClose, initial, onSave }: AccountDialogProps) {
   const [balanceDate, setBalanceDate] = useState(
     toDateInputValue(initial?.balanceDate ?? new Date().toISOString().slice(0, 10)),
   );
+  const [creditLimit, setCreditLimit] = useState(
+    initial ? (initial.creditLimit != null ? String(initial.creditLimit) : "") : "",
+  );
+  const [availableCredit, setAvailableCredit] = useState(
+    initial ? (initial.availableCredit != null ? String(initial.availableCredit) : "") : "",
+  );
+  const [outstandingBalance, setOutstandingBalance] = useState(
+    initial ? (initial.outstandingBalance != null ? String(initial.outstandingBalance) : "") : "",
+  );
+  const [monthlyPayment, setMonthlyPayment] = useState(
+    initial ? (initial.monthlyPayment != null ? String(initial.monthlyPayment) : "") : "",
+  );
+  const [installmentMonths, setInstallmentMonths] = useState(
+    initial ? (initial.installmentMonths != null ? String(initial.installmentMonths) : "") : "",
+  );
+  const [installmentStartDate, setInstallmentStartDate] = useState(
+    toDateInputValue(initial?.installmentStartDate ?? new Date().toISOString().slice(0, 10)),
+  );
+  const [interestRate, setInterestRate] = useState(
+    initial ? (initial.monthlyInterestRate != null ? String(initial.monthlyInterestRate) : "") : "",
+  );
+  const [annualFee, setAnnualFee] = useState(
+    initial ? (initial.annualFee != null ? String(initial.annualFee) : "") : "",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  const isCreditCard = type === AccountType.CreditCard;
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -190,6 +226,14 @@ function AccountDialog({ open, onClose, initial, onSave }: AccountDialogProps) {
         currency,
         initialBalance: Number(initialBalance) || 0,
         balanceDate,
+        creditLimit: isCreditCard ? numberOrNull(creditLimit) : null,
+        availableCredit: isCreditCard ? numberOrNull(availableCredit) : null,
+        outstandingBalance: isCreditCard ? numberOrNull(outstandingBalance) : null,
+        monthlyPayment: isCreditCard ? numberOrNull(monthlyPayment) : null,
+        installmentMonths: isCreditCard ? intOrNull(installmentMonths) : null,
+        installmentStartDate: isCreditCard ? installmentStartDate || null : null,
+        monthlyInterestRate: isCreditCard ? numberOrNull(interestRate) : null,
+        annualFee: isCreditCard ? numberOrNull(annualFee) : null,
       });
       onClose();
     } catch {
@@ -234,22 +278,134 @@ function AccountDialog({ open, onClose, initial, onSave }: AccountDialogProps) {
             ))}
           </Select>
         </FormControl>
-        <TextField
-          label="Balance"
-          value={initialBalance}
-          onChange={(e) => setInitialBalance(e.target.value)}
-          type="number"
-          fullWidth
-        />
-        <TextField
-          label="Balance as of"
-          value={balanceDate}
-          onChange={(e) => setBalanceDate(e.target.value)}
-          type="date"
-          fullWidth
-          helperText="Transactions after this date update the balance; earlier ones are recorded only."
-          slotProps={{ inputLabel: { shrink: true } }}
-        />
+        {isCreditCard ? (
+          <>
+            <TextField
+              label="Credit limit"
+              value={creditLimit}
+              onChange={(e) => setCreditLimit(e.target.value)}
+              type="number"
+              fullWidth
+              helperText="Total amount you can borrow."
+            />
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+              }}
+            >
+              <TextField
+                label="Still to spend"
+                value={availableCredit}
+                onChange={(e) => setAvailableCredit(e.target.value)}
+                type="number"
+                fullWidth
+                helperText="Credit still available on the card."
+              />
+              <TextField
+                label="Still to pay back"
+                value={outstandingBalance}
+                onChange={(e) => setOutstandingBalance(e.target.value)}
+                type="number"
+                fullWidth
+                helperText="Remaining debt."
+              />
+            </Box>
+            {creditLimit.trim() !== "" && (availableCredit.trim() !== "" || outstandingBalance.trim() !== "") && (
+              <Typography variant="caption" color="text.secondary">
+                Auto: spent so far{" "}
+                {formatCurrency(
+                  Math.max(0, (numberOrNull(creditLimit) ?? 0) - (numberOrNull(availableCredit) ?? 0)),
+                  currency,
+                )}
+                {" · "}
+                paid back so far{" "}
+                {formatCurrency(
+                  Math.max(
+                    0,
+                    (numberOrNull(creditLimit) ?? 0) -
+                      (numberOrNull(availableCredit) ?? 0) -
+                      (numberOrNull(outstandingBalance) ?? 0),
+                  ),
+                  currency,
+                )}
+              </Typography>
+            )}
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+              }}
+            >
+              <TextField
+                label="Monthly payment"
+                value={monthlyPayment}
+                onChange={(e) => setMonthlyPayment(e.target.value)}
+                type="number"
+                fullWidth
+              />
+              <TextField
+                label="Installments"
+                value={installmentMonths}
+                onChange={(e) => setInstallmentMonths(e.target.value)}
+                type="number"
+                fullWidth
+              />
+            </Box>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 2,
+              }}
+            >
+              <TextField
+                label="Interest (monthly %)"
+                value={interestRate}
+                onChange={(e) => setInterestRate(e.target.value)}
+                type="number"
+                fullWidth
+                helperText="0 for 0% financing."
+              />
+              <TextField
+                label="Annual fee"
+                value={annualFee}
+                onChange={(e) => setAnnualFee(e.target.value)}
+                type="number"
+                fullWidth
+              />
+            </Box>
+            <TextField
+              label="Installment start"
+              value={installmentStartDate}
+              onChange={(e) => setInstallmentStartDate(e.target.value)}
+              type="date"
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </>
+        ) : (
+          <>
+            <TextField
+              label="Balance"
+              value={initialBalance}
+              onChange={(e) => setInitialBalance(e.target.value)}
+              type="number"
+              fullWidth
+            />
+            <TextField
+              label="Balance as of"
+              value={balanceDate}
+              onChange={(e) => setBalanceDate(e.target.value)}
+              type="date"
+              fullWidth
+              helperText="Transactions after this date update the balance; earlier ones are recorded only."
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </>
+        )}
         {error && (
           <Typography variant="body2" color="error">
             {error}
@@ -387,15 +543,23 @@ export default function SettingsPage() {
                           {a.name}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === a.type)?.label} · {a.currency} · as of{" "}
-                          {a.balanceDate.slice(0, 10)}
-                          {a.balance !== a.initialBalance &&
+                          {ACCOUNT_TYPE_OPTIONS.find((o) => o.value === a.type)?.label}
+                          {a.type === AccountType.CreditCard && a.creditLimit != null
+                            ? ` · limit ${formatCurrency(a.creditLimit, a.currency)} · avail ${formatCurrency(
+                                Math.max(0, a.creditLimit - (a.outstandingBalance ?? 0)),
+                                a.currency,
+                              )}`
+                            : ` · ${a.currency} · as of ${a.balanceDate.slice(0, 10)}`}
+                          {a.type !== AccountType.CreditCard &&
+                            a.balance !== a.initialBalance &&
                             ` · initial ${formatCurrency(a.initialBalance, a.currency)}`}
                         </Typography>
                       </Box>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatCurrency(a.balance, a.currency)}
+                          {a.type === AccountType.CreditCard
+                            ? `owe ${formatCurrency(a.outstandingBalance ?? 0, a.currency)}`
+                            : formatCurrency(a.balance, a.currency)}
                         </Typography>
                         <IconButton
                           size="small"
@@ -475,9 +639,15 @@ export default function SettingsPage() {
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
-                          <IconButton size="small" color="error" onClick={() => handleCategoryDelete(c)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
+                          {!c.isCardPayment && (
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleCategoryDelete(c)}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          )}
                         </>
                       )}
                     </Box>

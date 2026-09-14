@@ -10,6 +10,7 @@ export interface Category {
   type: CategoryType;
   icon: string;
   color: string;
+  isCardPayment: boolean;
 }
 
 export interface Account {
@@ -20,6 +21,17 @@ export interface Account {
   initialBalance: number;
   balanceDate: string;
   balance: number;
+  creditLimit: number | null;
+  availableCredit: number | null;
+  totalSpent: number | null;
+  totalReturned: number | null;
+  outstandingBalance: number | null;
+  monthlyPayment: number | null;
+  installmentMonths: number | null;
+  remainingPayments: number | null;
+  installmentStartDate: string | null;
+  monthlyInterestRate: number | null;
+  annualFee: number | null;
 }
 
 export interface CashTransaction {
@@ -36,6 +48,9 @@ export interface CashTransaction {
   isTransfer: boolean;
   isOutgoingTransfer: boolean;
   affectsBalance: boolean;
+  cardPaymentAccountId: string | null;
+  isInstallmentPayment: boolean;
+  affectsCard: boolean;
 }
 
 export interface CategorySummary {
@@ -71,9 +86,26 @@ export interface Dashboard {
   savingsRate: number;
   investmentValue: number;
   netWorth: number;
+  creditDebt: number;
   expensesByCategory: CategorySummary[];
   recentTransactions: LatestTransaction[];
   monthlyTrend: MonthlyTrend[];
+  creditCards: CreditCardInfo[];
+}
+
+export interface CreditCardInfo {
+  id: string;
+  name: string;
+  currency: string;
+  creditLimit: number;
+  outstandingBalance: number;
+  availableCredit: number;
+  monthlyPayment: number | null;
+  installmentMonths: number | null;
+  remainingPayments: number | null;
+  monthlyInterestRate: number | null;
+  annualFee: number | null;
+  debtInEur: number;
 }
 
 export interface CategorySpending {
@@ -104,6 +136,8 @@ export interface CreateTransactionInput {
   accountId: string;
   categoryId: string;
   affectsBalance: boolean;
+  cardPaymentAccountId?: string | null;
+  isInstallmentPayment?: boolean;
 }
 
 export interface CreateTransferInput {
@@ -128,6 +162,14 @@ export interface CreateAccountInput {
   currency: string;
   initialBalance: number;
   balanceDate: string;
+  creditLimit?: number | null;
+  availableCredit?: number | null;
+  outstandingBalance?: number | null;
+  monthlyPayment?: number | null;
+  installmentMonths?: number | null;
+  installmentStartDate?: string | null;
+  monthlyInterestRate?: number | null;
+  annualFee?: number | null;
 }
 
 export type UpdateAccountInput = CreateAccountInput;

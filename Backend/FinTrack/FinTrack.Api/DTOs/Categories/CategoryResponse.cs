@@ -13,4 +13,6 @@ public class CategoryResponse
     public string Icon { get; set; } = string.Empty;
 
     public string Color { get; set; } = string.Empty;
+
+    public bool IsCardPayment { get; set; }
 }

@@ -13,5 +13,11 @@ public class Category : BaseEntity
 
     public string Color { get; set; } = "#000000";
 
+    /// <summary>
+    /// When true, transactions with this category are credit card payments: they count
+    /// as an expense (money leaves the cash account) and also pay down the selected credit card.
+    /// </summary>
+    public bool IsCardPayment { get; set; }
+
     public ICollection<CashTransaction> CashTransactions { get; set; } = [];
 }

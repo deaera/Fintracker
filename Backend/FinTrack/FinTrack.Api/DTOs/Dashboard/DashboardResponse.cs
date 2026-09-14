@@ -8,6 +8,9 @@ public class DashboardResponse
 
     public decimal NetWorth { get; set; }
 
+    /// <summary>Total credit card debt, normalized to EUR (positive number; subtracted from net worth).</summary>
+    public decimal CreditDebt { get; set; }
+
     public decimal Income { get; set; }
 
     public decimal Expenses { get; set; }
@@ -21,4 +24,6 @@ public class DashboardResponse
     public List<LatestTransactionResponse> RecentTransactions { get; set; } = [];
 
     public List<MonthlyTrendResponse> MonthlyTrend { get; set; } = [];
+
+    public List<CreditCardInfoResponse> CreditCards { get; set; } = [];
 }

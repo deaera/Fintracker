@@ -15,14 +15,15 @@ public class BalanceService
         _currency = currency;
     }
 
-    /// <summary>Sum of all account balances, normalized to EUR.</summary>
+    /// <summary>Sum of account balances, normalized to EUR. Credit cards are excluded — their outstanding balance is debt, not cash.</summary>
     public async Task<decimal> GetTotalCashAsync()
     {
         var rates = (await _currency.GetRatesAsync()).Rates;
 
         var accounts = await _context.Accounts
             .AsNoTracking()
-            .Select(a => new { a.Id, a.Currency })
+            .Select(a => new { a.Id, a.Currency, a.Type })
+            .Where(a => a.Type != AccountType.CreditCard)
             .ToListAsync();
 
         decimal totalEur = 0;
@@ -36,13 +37,43 @@ public class BalanceService
         return totalEur;
     }
 
+    public async Task<decimal> GetTotalCreditDebtAsync()
+    {
+        var rates = (await _currency.GetRatesAsync()).Rates;
+
+        var cards = await _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.Type == AccountType.CreditCard)
+            .Select(a => new { a.Currency, a.OutstandingBalance })
+            .ToListAsync();
+
+        return cards
+            .Where(c => c.OutstandingBalance is > 0)
+            .Sum(c => _currency.ConvertToBase(c.OutstandingBalance!.Value, c.Currency, rates));
+    }
+
+    /// <summary>Full months elapsed since a given month, clamped to >= 0.</summary>
+    public static int MonthsElapsed(DateOnly? start, DateOnly today)
+    {
+        if (start is null || start > today)
+            return 0;
+
+        var months = (today.Year - start.Value.Year) * 12 + today.Month - start.Value.Month;
+        return months < 0 ? 0 : months;
+    }
+
     public async Task<decimal> GetAccountBalanceAsync(Guid accountId)
     {
 var account = await _context.Accounts
         .AsNoTracking()
         .Where(a => a.Id == accountId)
-        .Select(a => new { a.InitialBalance, a.Currency, a.BalanceDate })
+        .Select(a => new { a.InitialBalance, a.Currency, a.BalanceDate, a.Type })
         .SingleAsync();
+
+        // A credit card account holds debt, not cash — the outstanding balance is
+        // reported separately and subtracted from net worth.
+        if (account.Type == AccountType.CreditCard)
+            return 0;
 
         var rates = (await _currency.GetRatesAsync()).Rates;
 
