@@ -27,4 +27,6 @@ public class CashTransactionResponse
     public bool IsTransfer { get; set; }
 
     public bool IsOutgoingTransfer { get; set; }
+
+    public bool AffectsBalance { get; set; }
 }

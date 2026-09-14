@@ -19,4 +19,7 @@ public class CreateCashTransactionRequest
     public Guid AccountId { get; set; }
 
     public Guid CategoryId { get; set; }
+
+    /// <summary>When false, the transaction is recorded but doesn't change the account balance.</summary>
+    public bool AffectsBalance { get; set; } = true;
 }

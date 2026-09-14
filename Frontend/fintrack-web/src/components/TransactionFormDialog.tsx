@@ -1,10 +1,12 @@
 import { useState } from "react";
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   ListSubheader,
   MenuItem,
   TextField,
@@ -52,6 +54,7 @@ export default function TransactionFormDialog({
     accounts.find((a) => a.id === (initial?.accountId ?? accounts[0]?.id))?.currency ??
     "EUR";
   const [currency, setCurrency] = useState(initialCurrency);
+  const [affectsBalance, setAffectsBalance] = useState(initial?.affectsBalance ?? true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -92,6 +95,7 @@ export default function TransactionFormDialog({
         date,
         categoryId,
         accountId,
+        affectsBalance,
       });
       onClose();
     } catch {
@@ -180,6 +184,22 @@ export default function TransactionFormDialog({
             </MenuItem>
           ))}
         </TextField>
+
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={affectsBalance}
+              onChange={(e) => setAffectsBalance(e.target.checked)}
+            />
+          }
+          label="Affects the account balance"
+          sx={{
+            "& .MuiFormControlLabel-label": { fontSize: "0.875rem" },
+          }}
+        />
+        <Typography variant="body2" color="text.secondary">
+          Untick to record the transaction without changing the balance.
+        </Typography>
 
         {error && (
           <Typography variant="body2" color="error">

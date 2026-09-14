@@ -35,6 +35,7 @@ export interface CashTransaction {
   categoryType: CategoryType;
   isTransfer: boolean;
   isOutgoingTransfer: boolean;
+  affectsBalance: boolean;
 }
 
 export interface CategorySummary {
@@ -102,6 +103,7 @@ export interface CreateTransactionInput {
   description: string;
   accountId: string;
   categoryId: string;
+  affectsBalance: boolean;
 }
 
 export interface CreateTransferInput {

@@ -75,7 +75,8 @@ public class TransferService
             Currency = currency,
             Description = description,
             TransferPairId = pairId,
-            IsOutgoingTransfer = true
+            IsOutgoingTransfer = true,
+            AffectsBalance = true
         };
 
         var incoming = new CashTransaction
@@ -87,7 +88,8 @@ public class TransferService
             Currency = currency,
             Description = description,
             TransferPairId = pairId,
-            IsOutgoingTransfer = false
+            IsOutgoingTransfer = false,
+            AffectsBalance = true
         };
 
         _context.CashTransactions.AddRange(outgoing, incoming);

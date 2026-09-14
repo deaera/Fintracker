@@ -32,4 +32,10 @@ public class CashTransaction
 
     /// <summary>True for the departing leg of a transfer (only meaningful when <see cref="TransferPairId"/> is set).</summary>
     public bool IsOutgoingTransfer { get; set; }
+
+    /// <summary>
+    /// When false, the transaction is recorded but doesn't change the account balance.
+    /// Transfers always affect the balance.
+    /// </summary>
+    public bool AffectsBalance { get; set; } = true;
 }

@@ -49,7 +49,8 @@ public class CashTransactionService
                 CategoryName = t.Category.Name,
                 CategoryType = t.Category.Type,
                 IsTransfer = t.TransferPairId != null,
-                IsOutgoingTransfer = t.IsOutgoingTransfer
+                IsOutgoingTransfer = t.IsOutgoingTransfer,
+                AffectsBalance = t.AffectsBalance
             })
             .ToListAsync();
     }
@@ -76,7 +77,8 @@ public class CashTransactionService
                 CategoryName = t.Category.Name,
                 CategoryType = t.Category.Type,
                 IsTransfer = t.TransferPairId != null,
-                IsOutgoingTransfer = t.IsOutgoingTransfer
+                IsOutgoingTransfer = t.IsOutgoingTransfer,
+                AffectsBalance = t.AffectsBalance
             })
             .FirstOrDefaultAsync();
     }
@@ -103,7 +105,8 @@ public class CashTransactionService
             Currency = NormalizeCurrency(request.Currency) ?? account.Currency,
             Description = request.Description,
             AccountId = request.AccountId,
-            CategoryId = request.CategoryId
+            CategoryId = request.CategoryId,
+            AffectsBalance = request.AffectsBalance
         };
 
         _context.CashTransactions.Add(transaction);
@@ -137,6 +140,7 @@ public class CashTransactionService
         transaction.Amount = request.Amount;
         transaction.Currency = NormalizeCurrency(request.Currency) ?? transaction.Currency;
         transaction.Description = request.Description;
+        transaction.AffectsBalance = request.AffectsBalance;
 
         if (transaction.TransferPairId is Guid pairId)
         {

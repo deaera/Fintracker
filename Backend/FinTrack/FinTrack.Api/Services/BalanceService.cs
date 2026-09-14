@@ -52,7 +52,10 @@ var account = await _context.Accounts
         var transactions = await _context.CashTransactions
             .AsNoTracking()
             .Include(t => t.Category)
-            .Where(t => t.AccountId == accountId && t.Date > account.BalanceDate)
+            .Where(t =>
+                t.AccountId == accountId &&
+                t.AffectsBalance &&
+                t.Date > account.BalanceDate)
             .ToListAsync();
 
         decimal income = 0;

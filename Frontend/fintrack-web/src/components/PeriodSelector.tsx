@@ -41,11 +41,10 @@ export default function PeriodSelector({ period, onChange }: Props) {
         <Select
           label="Month"
           value={String(period.month ?? "")}
-          disabled={period.year == null}
           onChange={(e) => {
             const value = e.target.value;
             onChange({
-              ...period,
+              year: period.year ?? currentYear,
               month: value === "" ? null : Number(value),
             });
           }}
