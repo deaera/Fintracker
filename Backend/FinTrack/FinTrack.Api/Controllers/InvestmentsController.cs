@@ -33,6 +33,13 @@ public class InvestmentsController : ControllerBase
     [HttpGet("overview")]
     public async Task<ActionResult<OverviewResponse>> GetOverview() => Ok(await _portfolio.GetOverviewAsync());
 
+    [HttpDelete]
+    public async Task<IActionResult> ResetAllInvestments()
+    {
+        await _portfolio.ResetAsync();
+        return NoContent();
+    }
+
     [HttpGet("holdings")]
     public async Task<ActionResult<List<HoldingResponse>>> GetHoldings() => Ok(await _portfolio.GetHoldingsAsync());
 

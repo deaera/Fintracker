@@ -47,6 +47,18 @@ public class InvestmentPortfolioService
         public decimal? Last { get; set; }
     }
 
+    /// <summary>
+    /// Deletes all investment data (accounts, transactions, assets, price history)
+    /// so the portfolio can be re-imported from scratch. Cash data is untouched.
+    /// </summary>
+    public async Task ResetAsync()
+    {
+        await _context.PriceHistory.ExecuteDeleteAsync();
+        await _context.InvestmentTransactions.ExecuteDeleteAsync();
+        await _context.InvestmentAccounts.ExecuteDeleteAsync();
+        await _context.Assets.ExecuteDeleteAsync();
+    }
+
     public async Task<OverviewResponse> GetOverviewAsync()
     {
         var snapshot = await GetSnapshotAsync();

@@ -27,6 +27,7 @@ import {
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import DeleteForeverIcon from "@mui/icons-material/DeleteForever";
 import PriceChangeIcon from "@mui/icons-material/PriceChange";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
 import { useSettings } from "../../context/settings";
@@ -41,6 +42,7 @@ import {
   getInvestmentAssets,
   parseXtbImport,
   parseXtbWorkbook,
+  resetInvestments,
 } from "../../services/investmentService";
 import type { InvestmentAccount, InvestmentAsset } from "../../types";
 import { formatCurrency } from "../../utils/format";
@@ -74,6 +76,7 @@ export default function AccountsTab() {
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleteAssetTarget, setDeleteAssetTarget] = useState<InvestmentAsset | null>(null);
   const [confirmCommit, setConfirmCommit] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   const accounts = useMemo(() => accountsState.data ?? [], [accountsState.data]);
   const assets = useMemo(() => assetsState.data ?? [], [assetsState.data]);
@@ -109,6 +112,17 @@ export default function AccountsTab() {
       toast.error("Could not delete asset. It may be used by transactions.");
     }
     setDeleteAssetTarget(null);
+  };
+
+  const confirmResetInvestments = async () => {
+    try {
+      await resetInvestments();
+      toast.success("All investment data deleted. You can start fresh.");
+      setConfirmReset(false);
+      await Promise.all([accountsState.reload(), assetsState.reload()]);
+    } catch {
+      toast.error("Could not reset investments.");
+    }
   };
 
   const handleSavePrice = async () => {
@@ -620,6 +634,36 @@ export default function AccountsTab() {
         </CardContent>
       </Card>
 
+      <Card sx={{ border: "1px solid", borderColor: "error.main" }}>
+        <CardContent
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 2,
+          }}
+        >
+          <Box>
+            <Typography variant="h6" sx={{ color: "error.main" }}>
+              Reset investments
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Deletes every broker account, transaction, holding, asset and price history.
+              Cash accounts and transactions are not affected. This cannot be undone.
+            </Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            color="error"
+            startIcon={<DeleteForeverIcon />}
+            onClick={() => setConfirmReset(true)}
+          >
+            Delete everything
+          </Button>
+        </CardContent>
+      </Card>
+
       <InvestmentAccountDialog
         key={accountDialogOpen ? (editingAccount?.id ?? "new") : "closed"}
         open={accountDialogOpen}
@@ -703,6 +747,15 @@ export default function AccountsTab() {
         tone="primary"
         onClose={() => setConfirmCommit(false)}
         onConfirm={confirmCommitImport}
+      />
+
+      <ConfirmDialog
+        open={confirmReset}
+        title="Delete ALL investment data?"
+        message="This permanently removes every broker account, transaction, holding, asset and price history. Use it only to start over with a fresh XTB import. Cash accounts and transactions are not affected."
+        confirmLabel="Delete everything"
+        onClose={() => setConfirmReset(false)}
+        onConfirm={confirmResetInvestments}
       />
     </Stack>
   );

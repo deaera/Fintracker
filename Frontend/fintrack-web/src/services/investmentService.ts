@@ -202,3 +202,7 @@ export async function commitXtbImport(input: XtbImportCommitInput): Promise<XtbI
   const { data } = await api.post<XtbImportCommitResponse>(`${BASE}/import/xtb/commit`, input);
   return data;
 }
+
+export async function resetInvestments(): Promise<void> {
+  await api.delete(BASE);
+}
