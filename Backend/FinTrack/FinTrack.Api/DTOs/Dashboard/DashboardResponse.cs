@@ -26,4 +26,7 @@ public class DashboardResponse
     public List<MonthlyTrendResponse> MonthlyTrend { get; set; } = [];
 
     public List<CreditCardInfoResponse> CreditCards { get; set; } = [];
+
+    /// <summary>Month-end snapshots of wealth (net worth, balance, investments) for the last 12 months.</summary>
+    public List<WealthHistoryPointResponse> WealthHistory { get; set; } = [];
 }

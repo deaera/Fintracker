@@ -9,7 +9,7 @@ import {
   Typography,
 } from "@mui/material";
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import MonthlyTrendChart from "../components/MonthlyTrendChart";
+import AccountSpendingByMonthChart from "../components/AccountSpendingByMonthChart";
 import PeriodSelector from "../components/PeriodSelector";
 import { useSettings } from "../context/settings";
 import { useApiData } from "../hooks/useApiData";
@@ -128,9 +128,18 @@ export default function AnalyticsPage() {
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 1 }}>
-            Income vs expenses by month
+            Spending by account
           </Typography>
-          <MonthlyTrendChart data={data.monthly} currency={currency} />
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Filter by account, income/expense/net, month or all time
+          </Typography>
+          <AccountSpendingByMonthChart
+            data={data.accountMonthly}
+            categoryData={data.accountCategoryMonthly}
+            currency={currency}
+            period={period}
+            onPeriodChange={setPeriod}
+          />
         </CardContent>
       </Card>
 

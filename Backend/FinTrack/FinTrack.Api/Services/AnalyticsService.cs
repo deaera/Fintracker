@@ -69,7 +69,9 @@ public class AnalyticsService
             BestMonth = bestMonth,
             Monthly = monthlyWithData,
             IncomeBreakdown = BuildBreakdown(periodTransactions, CategoryType.Income, income, rates),
-            ExpenseBreakdown = BuildBreakdown(periodTransactions, CategoryType.Expense, expenses, rates)
+            ExpenseBreakdown = BuildBreakdown(periodTransactions, CategoryType.Expense, expenses, rates),
+            AccountMonthly = await GetAccountMonthlyAsync(month, year, today, rates),
+            AccountCategoryMonthly = await GetAccountCategoryMonthlyAsync(month, year, today, rates)
         };
     }
 
@@ -168,6 +170,124 @@ public class AnalyticsService
                 Color = g.Key.Color
             })
             .OrderByDescending(x => x.Amount)
+            .ToList();
+    }
+
+    private async Task<List<AccountMonthlySpendingResponse>> GetAccountMonthlyAsync(
+        int? month,
+        int? year,
+        DateOnly today,
+        Dictionary<string, decimal> rates)
+    {
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
+        var query = _context.CashTransactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Include(t => t.Account)
+            .AsQueryable();
+
+        if (month.HasValue)
+        {
+            var targetYear = year ?? today.Year;
+            query = query.Where(t =>
+                t.Date.Month == month.Value &&
+                t.Date.Year == targetYear);
+        }
+        else if (year.HasValue)
+        {
+            query = query.Where(t => t.Date.Year == year.Value);
+        }
+
+        var transactions = await query
+            .Where(t => t.AffectsBalance && t.Category.Type != CategoryType.Transfer)
+            .ToListAsync();
+
+        return transactions
+            .GroupBy(t => new
+            {
+                t.Date.Year,
+                t.Date.Month,
+                AccountId = t.Account.Id,
+                AccountName = t.Account.Name,
+                AccountCurrency = t.Account.Currency
+            })
+            .Select(g => new AccountMonthlySpendingResponse
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                AccountId = g.Key.AccountId,
+                AccountName = g.Key.AccountName,
+                AccountCurrency = g.Key.AccountCurrency,
+                Income = g.Where(x => x.Category.Type == CategoryType.Income)
+                    .Sum(x => ToEur(x.Amount, x.Currency)),
+                Expenses = g.Where(x => x.Category.Type == CategoryType.Expense)
+                    .Sum(x => ToEur(x.Amount, x.Currency))
+            })
+            .OrderBy(r => r.Year)
+            .ThenBy(r => r.Month)
+            .ThenBy(r => r.AccountName)
+            .ToList();
+    }
+
+    private async Task<List<AccountCategoryMonthlyResponse>> GetAccountCategoryMonthlyAsync(
+        int? month,
+        int? year,
+        DateOnly today,
+        Dictionary<string, decimal> rates)
+    {
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
+        var query = _context.CashTransactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Include(t => t.Account)
+            .AsQueryable();
+
+        if (month.HasValue)
+        {
+            var targetYear = year ?? today.Year;
+            query = query.Where(t =>
+                t.Date.Month == month.Value &&
+                t.Date.Year == targetYear);
+        }
+        else if (year.HasValue)
+        {
+            query = query.Where(t => t.Date.Year == year.Value);
+        }
+
+        var transactions = await query
+            .Where(t => t.AffectsBalance && t.Category.Type != CategoryType.Transfer)
+            .ToListAsync();
+
+        return transactions
+            .GroupBy(t => new
+            {
+                t.Date.Year,
+                t.Date.Month,
+                AccountId = t.Account.Id,
+                AccountName = t.Account.Name,
+                CategoryName = t.Category.Name,
+                CategoryColor = t.Category.Color,
+                CategoryType = t.Category.Type
+            })
+            .Select(g => new AccountCategoryMonthlyResponse
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                AccountId = g.Key.AccountId,
+                AccountName = g.Key.AccountName,
+                CategoryName = g.Key.CategoryName,
+                CategoryColor = g.Key.CategoryColor,
+                CategoryType = g.Key.CategoryType,
+                Amount = g.Sum(x => ToEur(x.Amount, x.Currency))
+            })
+            .OrderBy(r => r.Year)
+            .ThenBy(r => r.Month)
+            .ThenBy(r => r.AccountName)
+            .ThenBy(r => r.CategoryName)
             .ToList();
     }
 }

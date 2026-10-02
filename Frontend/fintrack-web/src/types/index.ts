@@ -78,6 +78,15 @@ export interface MonthlyTrend {
   savings: number;
 }
 
+export interface WealthPoint {
+  year: number;
+  month: number;
+  totalBalance: number;
+  investmentValue: number;
+  creditDebt: number;
+  netWorth: number;
+}
+
 export interface Dashboard {
   totalBalance: number;
   income: number;
@@ -91,6 +100,7 @@ export interface Dashboard {
   recentTransactions: LatestTransaction[];
   monthlyTrend: MonthlyTrend[];
   creditCards: CreditCardInfo[];
+  wealthHistory: WealthPoint[];
 }
 
 export interface CreditCardInfo {
@@ -115,6 +125,27 @@ export interface CategorySpending {
   color: string;
 }
 
+export interface AccountMonthlySpending {
+  year: number;
+  month: number;
+  accountId: string;
+  accountName: string;
+  accountCurrency: string;
+  income: number;
+  expenses: number;
+}
+
+export interface AccountCategoryMonthly {
+  year: number;
+  month: number;
+  accountId: string;
+  accountName: string;
+  categoryName: string;
+  categoryColor: string;
+  categoryType: CategoryType;
+  amount: number;
+}
+
 export interface Analytics {
   totalIncome: number;
   totalExpenses: number;
@@ -126,6 +157,8 @@ export interface Analytics {
   monthly: MonthlyTrend[];
   incomeBreakdown: CategorySpending[];
   expenseBreakdown: CategorySpending[];
+  accountMonthly: AccountMonthlySpending[];
+  accountCategoryMonthly: AccountCategoryMonthly[];
 }
 
 export interface CreateTransactionInput {

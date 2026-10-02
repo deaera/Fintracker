@@ -91,6 +91,8 @@ public class DashboardService
 
         var monthlyTrend = await GetMonthlyTrendAsync(today, month, year);
 
+        var wealthHistory = await GetWealthHistoryAsync(today, rates);
+
         return new DashboardResponse
         {
             TotalBalance = totalBalance,
@@ -104,8 +106,129 @@ public class DashboardService
             ExpensesByCategory = expensesByCategory,
             RecentTransactions = recentTransactions,
             MonthlyTrend = monthlyTrend,
-            CreditCards = creditCards
+            CreditCards = creditCards,
+            WealthHistory = wealthHistory
         };
+    }
+
+    /// <summary>
+    /// Month-end snapshots for the last 12 months. Total balance is reconstructed
+    /// from the recorded cash transactions up to each month-end; the investment
+    /// value uses held quantities priced at the known price at that date; credit
+    /// card debt is applied from the card's balance date onward.
+    /// </summary>
+    private async Task<List<WealthHistoryPointResponse>> GetWealthHistoryAsync(
+        DateOnly today,
+        Dictionary<string, decimal> rates)
+    {
+        decimal ToEur(decimal amount, string currency)
+            => _currency.ConvertToBase(amount, currency, rates);
+
+        var accounts = await _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.Type != AccountType.CreditCard)
+            .ToListAsync();
+
+        var transactions = await _context.CashTransactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Where(t => t.AffectsBalance)
+            .ToListAsync();
+
+        var byAccount = transactions.ToLookup(t => t.AccountId);
+
+        var cards = await _context.Accounts
+            .AsNoTracking()
+            .Where(a => a.Type == AccountType.CreditCard)
+            .ToListAsync();
+
+        var currentMonth = new DateOnly(today.Year, today.Month, 1);
+
+        var startMonth = accounts.Count > 0
+            ? new DateOnly(
+                accounts.Min(a => a.BalanceDate).Year,
+                accounts.Min(a => a.BalanceDate).Month,
+                1)
+            : currentMonth;
+
+        var dates = new List<DateOnly>();
+
+        for (var m = startMonth; m <= currentMonth; m = m.AddMonths(1))
+        {
+            var lastDay = m.AddMonths(1).AddDays(-1);
+            dates.Add(lastDay > today ? today : lastDay);
+        }
+
+        var investmentDates = dates.Where(d => d <= today).ToList();
+        var investmentValues = await _portfolioService.GetHistoricalTotalValuesAsync(investmentDates);
+        var investmentValueByDate = investmentDates
+            .Select((date, i) => (date, investmentValues[i]))
+            .ToDictionary(x => x.date, x => x.Item2);
+
+        var history = new List<WealthHistoryPointResponse>(dates.Count);
+
+        foreach (var date in dates)
+        {
+            decimal balanceEur = 0;
+
+            foreach (var account in accounts)
+            {
+                decimal income = 0;
+                decimal expenses = 0;
+                decimal transferOut = 0;
+                decimal transferIn = 0;
+
+                decimal ToAccountCurrency(decimal amount, string currency)
+                    => _currency.ConvertTo(amount, currency, account.Currency, rates);
+
+                foreach (var t in byAccount[account.Id])
+                {
+                    if (t.Date <= account.BalanceDate || t.Date > date)
+                        continue;
+
+                    var value = ToAccountCurrency(t.Amount, t.Currency);
+
+                    switch (t.Category.Type)
+                    {
+                        case CategoryType.Income:
+                            income += value;
+                            break;
+                        case CategoryType.Expense:
+                            expenses += value;
+                            break;
+                        case CategoryType.Transfer when t.IsOutgoingTransfer:
+                            transferOut += value;
+                            break;
+                        case CategoryType.Transfer:
+                            transferIn += value;
+                            break;
+                    }
+                }
+
+                var balanceInAccountCurrency = account.InitialBalance + income - expenses - transferOut + transferIn;
+                balanceEur += ToEur(balanceInAccountCurrency, account.Currency);
+            }
+
+            var debtEur = cards
+                .Where(c => (c.OutstandingBalance ?? 0) > 0 && c.BalanceDate <= date)
+                .Sum(c => ToEur(c.OutstandingBalance!.Value, c.Currency));
+
+            var investmentValue = investmentValueByDate.TryGetValue(date, out var investmentAtDate)
+                ? investmentAtDate
+                : 0;
+
+            history.Add(new WealthHistoryPointResponse
+            {
+                Year = date.Year,
+                Month = date.Month,
+                TotalBalance = decimal.Round(balanceEur, 2),
+                InvestmentValue = investmentValue,
+                CreditDebt = decimal.Round(debtEur, 2),
+                NetWorth = decimal.Round(balanceEur + investmentValue - debtEur, 2)
+            });
+        }
+
+        return history;
     }
 
     private async Task<List<CreditCardInfoResponse>> GetCreditCardsAsync(

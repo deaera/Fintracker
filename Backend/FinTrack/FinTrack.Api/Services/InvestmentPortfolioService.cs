@@ -93,6 +93,166 @@ public class InvestmentPortfolioService
         return await BuildPerformanceAsync(range);
     }
 
+    /// <summary>
+    /// Total portfolio value (holdings + cash, EUR) at each of the given dates,
+    /// using the held quantities and the known price at or before that date.
+    /// Falls back to the manual price, then the average cost, for assets without
+    /// a price history row up to the requested date.
+    /// </summary>
+    public async Task<List<decimal>> GetHistoricalTotalValuesAsync(IReadOnlyList<DateOnly> dates)
+    {
+        var rates = (await _currency.GetRatesAsync()).Rates;
+        decimal ToEur(decimal amount, string currency) => ToEurFromRates(amount, currency, rates);
+
+        var transactions = await LoadOrderedTransactionsAsync();
+        var accounts = await _context.InvestmentAccounts.AsNoTracking().ToListAsync();
+        var assets = await _context.Assets.AsNoTracking().ToListAsync();
+
+        var assetById = assets.ToDictionary(a => a.Id);
+
+        var slots = new Dictionary<(Guid AccountId, Guid AssetId), Slot>();
+        var accountCash = accounts.ToDictionary(a => a.Id, a => a.OpeningBalance);
+        var assetAggregate = new Dictionary<Guid, Slot>();
+
+        var priceCursors = assets.ToDictionary(a => a.Id, _ => new PriceCursor());
+
+        var prices = await _context.PriceHistory
+            .AsNoTracking()
+            .OrderBy(p => p.AssetId)
+            .ThenBy(p => p.Date)
+            .ToListAsync();
+
+        foreach (var group in prices.GroupBy(p => p.AssetId))
+        {
+            if (priceCursors.TryGetValue(group.Key, out var cursor))
+                cursor.Rows = group.ToList();
+        }
+
+        decimal CurrentPriceFor(Guid assetId)
+        {
+            var asset = assetById[assetId];
+
+            if (asset.ManualPrice.HasValue)
+                return asset.ManualPrice.Value;
+
+            var cursor = priceCursors[assetId];
+
+            if (cursor.Last.HasValue)
+                return cursor.Last.Value;
+
+            if (assetAggregate.TryGetValue(assetId, out var aggregate) && aggregate.Qty > 0)
+                return aggregate.Avg;
+
+            return 0;
+        }
+
+        int txIndex = 0;
+        var values = new List<decimal>(dates.Count);
+
+        foreach (var date in dates)
+        {
+            while (txIndex < transactions.Count && transactions[txIndex].Date <= date)
+            {
+                var t = transactions[txIndex];
+
+                if (t.AssetId is { } assetId && assetById.ContainsKey(assetId))
+                {
+                    var key = (t.InvestmentAccountId, assetId);
+                    var slot = slots.GetValueOrDefault(key) ?? new Slot();
+                    var aggregate = assetAggregate.GetValueOrDefault(assetId) ?? new Slot();
+
+                    switch (t.Type)
+                    {
+                        case InvestmentTransactionType.Buy:
+                            slot.Qty += t.Quantity;
+                            slot.Cost += t.Amount + t.Fee;
+                            aggregate.Qty += t.Quantity;
+                            aggregate.Cost += t.Amount + t.Fee;
+                            accountCash[t.InvestmentAccountId] -= t.Amount + t.Fee;
+                            break;
+
+                        case InvestmentTransactionType.Sell:
+                            var allocated = Clamp(t.Quantity * slot.Avg, slot.Cost);
+                            slot.Qty -= t.Quantity;
+                            slot.Cost -= allocated;
+                            aggregate.Qty -= t.Quantity;
+                            aggregate.Cost -= allocated;
+                            accountCash[t.InvestmentAccountId] += t.Amount - t.Fee;
+                            break;
+
+                        case InvestmentTransactionType.Dividend:
+                            accountCash[t.InvestmentAccountId] += t.Amount;
+                            break;
+                    }
+
+                    if (slot.Qty <= 0.0001m)
+                    {
+                        slot.Qty = 0;
+                        slot.Cost = 0;
+                    }
+
+                    if (aggregate.Qty <= 0.0001m)
+                    {
+                        aggregate.Qty = 0;
+                        aggregate.Cost = 0;
+                    }
+
+                    slots[key] = slot;
+                    assetAggregate[assetId] = aggregate;
+                }
+                else if (t.AssetId is null)
+                {
+                    switch (t.Type)
+                    {
+                        case InvestmentTransactionType.Dividend:
+                        case InvestmentTransactionType.Interest:
+                        case InvestmentTransactionType.TransferIn:
+                            accountCash[t.InvestmentAccountId] += t.Amount;
+                            break;
+                        case InvestmentTransactionType.Fee:
+                        case InvestmentTransactionType.TransferOut:
+                            accountCash[t.InvestmentAccountId] -= t.Amount;
+                            break;
+                    }
+                }
+
+                txIndex++;
+            }
+
+            foreach (var asset in assets)
+            {
+                var cursor = priceCursors[asset.Id];
+
+                while (cursor.Index < cursor.Rows.Count && cursor.Rows[cursor.Index].Date <= date)
+                {
+                    cursor.Last = cursor.Rows[cursor.Index].Price;
+                    cursor.Index++;
+                }
+            }
+
+            var value = 0m;
+
+            foreach (var (key, slot) in slots)
+            {
+                if (slot.Qty <= 0.0001m)
+                    continue;
+
+                var asset = assetById[key.AssetId];
+                var price = CurrentPriceFor(asset.Id);
+                value += ToEur(slot.Qty * price, asset.Currency);
+            }
+
+            foreach (var account in accounts)
+            {
+                value += ToEur(accountCash[account.Id], account.Currency);
+            }
+
+            values.Add(decimal.Round(value, 2));
+        }
+
+        return values;
+    }
+
     public async Task<List<AllocationEntry>> GetAllocationAsync(string by)
     {
         var snapshot = await GetSnapshotAsync();

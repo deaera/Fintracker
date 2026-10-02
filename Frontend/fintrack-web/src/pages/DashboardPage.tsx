@@ -23,6 +23,7 @@ import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CategoryPie from "../components/CategoryPie";
 import MonthlyTrendChart from "../components/MonthlyTrendChart";
+import WealthTrendChart from "../components/WealthTrendChart";
 import PeriodSelector from "../components/PeriodSelector";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useSettings, DISPLAY_CURRENCIES } from "../context/settings";
@@ -335,6 +336,18 @@ export default function DashboardPage() {
               })}
             </Grid>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="h6" sx={{ mb: 1 }}>
+            Wealth over time
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Last 12 months — net worth, total balance and investments at each month-end
+          </Typography>
+          <WealthTrendChart data={data.wealthHistory} currency={currency} />
         </CardContent>
       </Card>
 

@@ -23,4 +23,10 @@ public class AnalyticsResponse
     public List<CategorySpendingResponse> IncomeBreakdown { get; set; } = [];
 
     public List<CategorySpendingResponse> ExpenseBreakdown { get; set; } = [];
+
+    /// <summary>Monthly totals per account (all-time; can be filtered client-side by account/type).</summary>
+    public List<AccountMonthlySpendingResponse> AccountMonthly { get; set; } = [];
+
+    /// <summary>Monthly totals per account and category (for stacked expense/income breakdowns).</summary>
+    public List<AccountCategoryMonthlyResponse> AccountCategoryMonthly { get; set; } = [];
 }
